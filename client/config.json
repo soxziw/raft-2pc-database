@@ -1,0 +1,59 @@
+{
+    "CLIENT":
+    {
+        "A": ["S1","S2","S3"],
+        "B": ["S1","S2","S3"],
+        "C": ["S4","S5","S6"],
+        "D": ["S4","S5","S6"],
+        "E": ["S7","S8","S9"],
+        "F": ["S7","S8","S9"]
+    },
+    "SERVER":
+    {
+        "S1":
+        {
+        "HOST_IP": "localhost",
+        "HOST_PORT": 5001
+        },
+        "S2":
+        {
+        "HOST_IP": "localhost",
+        "HOST_PORT": 5002
+        },
+        "S3":
+        {
+        "HOST_IP": "localhost",
+        "HOST_PORT": 5003
+        },
+        "S4":
+        {
+        "HOST_IP": "localhost",
+        "HOST_PORT": 5004
+        },
+        "S5":
+        {
+        "HOST_IP": "localhost",
+        "HOST_PORT": 5005
+        },
+        "S6":
+        {
+        "HOST_IP": "localhost",
+        "HOST_PORT": 5006
+        },
+        "S7":
+        {
+        "HOST_IP": "localhost",
+        "HOST_PORT": 5007
+        },
+        "S8":
+        {
+        "HOST_IP": "localhost",
+        "HOST_PORT": 5008
+        },
+        "S9":
+        {
+        "HOST_IP": "localhost",
+        "HOST_PORT": 5009
+        }
+    }
+}
