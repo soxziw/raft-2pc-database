@@ -110,8 +110,8 @@ message WrapperMessage {
 
 ```protobuf
 message Stop {
-	required int32 clusterId = 1;
-	required int32 serverId = 2;
+  required int32 clusterId = 1;
+  required int32 serverId = 2;
 }
 ```
 
@@ -119,8 +119,8 @@ message Stop {
 
 ```protobuf
 message Resume {
-	required int32 clusterId = 1;
-	required int32 serverId = 2;
+  required int32 clusterId = 1;
+  required int32 serverId = 2;
 }
 ```
 
@@ -128,7 +128,7 @@ message Resume {
 
 ```protobuf
 message IntraShardReq {
-	required int32 clusterId = 1;
+  required int32 clusterId = 1;
   required int32 senderId = 2;
   required int32 receiverId = 3;
   required int32 amount = 4;
@@ -156,15 +156,17 @@ message IntraShardRsp {
 enum CrossShardPhaseType {
   PREPARE = 0;
   COMMIT = 1;
+  ABORT = 2;
 }
 
 message CrossShardReq {
-	required CrossShardPhaseType phase = 1
-	required int32 clusterId = 2;
-  required int32 senderId = 3;
-  required int32 receiverId = 4;
-  required int32 amount = 5;
-  required int32 id = 6;
+  required CrossShardPhaseType phase = 1;
+  required int32 senderClusterId = 2;
+  required int32 receiverClusterId = 3;
+  required int32 senderId = 4;
+  required int32 receiverId = 5;
+  required int32 amount = 6;
+  required int32 id = 7;
 }
 ```
 
@@ -174,7 +176,7 @@ message CrossShardReq {
 enum CrossShardResultType {
   YES = 0; // Prepare phase
   ABORT = 1; // Prepare phase
-  ACK = 2; // Commit phase
+  ACK = 2; // Commit/Abort phase
 }
 
 message CrossShardRsp {
@@ -231,3 +233,42 @@ message RequestVoteRsp {
 }
 ```
 
+### PrintBalanceReq
+
+```protobuf
+message PrintBalanceReq {
+  required int32 clusterId = 1;
+  required int32 serverId = 2;
+  required int32 dataItemID = 3;
+}
+```
+
+### PrintBalanceRsp
+
+```protobuf
+message PrintBalanceRsp {
+  required int32 clusterId = 1;
+  required int32 serverId = 2;
+  required int32 dataItemID = 3;
+  required int32 balance = 4;
+}
+```
+
+### PrintDatastoreReq
+
+```protobuf
+message PrintDatastoreReq {
+  required int32 clusterId = 1;
+  required int32 serverId = 2;
+}
+```
+
+### PrintDatastoreRsp
+
+```protobuf
+message PrintDatastoreRsp {
+  required int32 clusterId = 1;
+  required int32 serverId = 2;
+  repeated LogEntry entries = 3;
+}
+```
