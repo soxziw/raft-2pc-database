@@ -102,6 +102,10 @@ message WrapperMessage {
     AppendEntriesRsp appendEntriesRsp = 8;
     RequestVoteReq requestVoteReq = 9;
     RequestVoteRsp requestVoteRsp = 10;
+    PrintBalanceReq printBalanceReq = 11;
+    PrintBalanceRsp printBalanceRsp = 12;
+    PrintDatastoreReq printDatastoreReq = 13;
+    PrintDatastoreRsp printDatastoreRsp = 14;
   }
 }
 ```
