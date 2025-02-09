@@ -9,21 +9,6 @@ BUFFER_SIZE = 1024
 DEFAULT_BALANCE = 10.0
 JOB_INTERVAL = 0.1
 
-
-class TransactionStatus:
-    PENDING = "PENDING"
-    SUCCESS = "SUCCESS"
-    FAILED = "ABORTED"
-
-class TransactionType:
-    INTRA_SHARD = "INTRA_SHARD"
-    CROSS_SHARD = "CROSS_SHARD"
-
-class MessageType:
-    PREPARE = "PREPARE"
-    ABORT = "ABORT"
-    ACK = "ACK"
-    COMMIT = "COMMIT"
     
 
 def get_current_time(fmt='%Y-%m-%dT%H:%M:%S'):

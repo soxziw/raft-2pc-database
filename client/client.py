@@ -3,6 +3,7 @@ import time
 import json
 import utils
 import re, os, sys
+from handler import TransactionHandler
 
 
 with open('config.json') as f:
@@ -34,7 +35,12 @@ class Client:
                     continue
                 self.transfer(int(sender), int(recipient), int(amount))
             elif re.match(r'(balance|bal|b)$', cmd):
-                self.print_balance()
+                try:
+                    user = cmd.split()[1:]
+                except ValueError:
+                    print('Invalid balance command')
+                    continue
+                self.print_balance(user)
             elif re.match(r'datastore|ds', cmd):
                 self.print_data_store()
             elif re.match(r'|p', cmd):
@@ -57,22 +63,31 @@ class Client:
         print('Please enter a command:')
 
 
-    def transfer(self, sender: int, recipient: int, amount: int):
+    def transfer(self, sender_id: int, recipient_id: int, amount: int):
         """Issue a new transfer transaction"""
-        pass
+        if sender_id is None or recipient_id is None or amount is None:
+            print('Invalid transfer command: sender and receiver must not be null')
+            return
+        if sender_id not in range(3000) or recipient_id not in range(3000):
+            print('Invalid transfer command: sender and receiver must be from 0 to 2999')
+            return
+        if amount < 0:
+            print("Invalid transfer command: Amount must be positive")
+            return
+        TransactionHandler.transfer(sender_id, recipient_id, amount)
 
-    def print_balance(self):
-        """print the balance of this client on all servers"""
-        pass
+    def print_balance(self, user_id: int):
+        """Print the balance of this client on all servers"""
+        return TransactionHandler.get_balance(user_id)
 
 
     def print_data_store(self):
-        """print the committed transactions on all servers"""
-        pass
+        """Print the committed transactions on all servers"""
+        return TransactionHandler.get_data_store()
 
 
     def print_performance_metrics(self):
-        """ prints throughput and latency from the time the client initiates a transaction to the time the client process receives a reply message."""
+        """Prints throughput and latency from the time the client initiates a transaction to the time the client process receives a reply message."""
         pass
 
 
