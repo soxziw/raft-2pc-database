@@ -1,0 +1,54 @@
+message IntraShardReq {
+  required int32 clusterId = 1;
+  required int32 senderId = 2;
+  required int32 receiverId = 3;
+  required int32 amount = 4;
+  required int32 id = 5;
+}
+
+enum IntraShardResultType {
+  SUCCESS = 0;
+  FAIL = 1;
+}
+
+message IntraShardRsp {
+  required IntraShardResultType result = 1;
+  required int32 id = 2;
+}
+
+enum CrossShardPhaseType {
+  PREPARE = 0; // Prepare phase
+  COMMIT = 1;  // Commit/Abort phase
+  ABORT = 2;   // Commit/Abort phase
+}
+
+message CrossShardReq {
+  required CrossShardPhaseType phase = 1;
+  required int32 senderClusterId = 2;
+  required int32 receiverClusterId = 3;
+  required int32 senderId = 4;
+  required int32 receiverId = 5;
+  required int32 amount = 6;
+  required int32 id = 7;
+}
+
+enum CrossShardResultType {
+  YES = 0; // Prepare phase
+  NO = 1; // Prepare phase
+  ACK = 2; // Commit/Abort phase
+}
+
+message CrossShardRsp {
+  required CrossShardResultType result = 1;
+  required int32 id = 2;
+}
+
+message Stop {
+  required int32 clusterId = 1;
+  required int32 serverId = 2;
+}
+
+message Resume {
+  required int32 clusterId = 1;
+  required int32 serverId = 2;
+}

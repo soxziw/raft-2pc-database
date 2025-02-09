@@ -1,13 +1,8 @@
-import threading
-import timeloop
-import socket
+
 import time
 import json
-from datetime import timedelta
-from typing import List
 import utils
 import re, os, sys
-from utils import TransactionStatus, MessageType, TransactionType
 
 
 with open('config.json') as f:
@@ -15,12 +10,12 @@ with open('config.json') as f:
 
 class Client:
     """The client"""
-    def __init__(self, client_id: str):
-        self.client_id = client_id
+    def __init__(self):
+        # self.client_id = client_id
         self.create_time = utils.get_current_time()
 
     def __repr__(self):
-        return f"Client(id={self.client_id}, created_time={self.create_time})"
+        return f"Client(created_time={self.create_time})"
     
 
     def prompt(self):
@@ -33,11 +28,11 @@ class Client:
                 os._exit(0)
             elif re.match(r'^(transfer|t)\s+\d+\s+\d+(\.\d+)?$', cmd):
                 try:
-                    recipient, amount = cmd.split()[1:]
+                    sender, recipient, amount = cmd.split()[1:]
                 except ValueError:
                     print('Invalid transfer command')
                     continue
-                self.send_transaction(int(recipient), float(amount))
+                self.transfer(int(sender), int(recipient), int(amount))
             elif re.match(r'(balance|bal|b)$', cmd):
                 self.print_balance()
             elif re.match(r'datastore|ds', cmd):
@@ -52,47 +47,36 @@ class Client:
     def help(self):
         """Help for user interaction"""
         time.sleep(1)
-        print('This is the CS271 blockchain client interface.')
+        print('This is the CS271 final project user interface.')
         print('User Commands:')
-        print('  1. transfer <recipient_id> <amount_to_transfer> (e.g., transfer 2 10, or, t 3 5): transfer <amount_to_transfer> to <recipient_id>')
-        print('  2. balance (or bal, b): print the balance of the client')
+        print('  1. transfer <sender_id> <recipient_id> <amount_to_transfer> (e.g., transfer 1 2 10, or, t 1 3 5): <sender_id> transfer <amount_to_transfer> to <recipient_id>')
+        print('  2. balance <user_id>(or bal, b): print the balance of <user_id>')
         print('  3. datastore (or abal, ab): print the committed transactions of each server')
         print('  4. performance (or print, p): print the throughput and latency of the transaction')
         print('  5. exit (or quit, q): exit the client interface')
         print('Please enter a command:')
 
 
-    def send_transaction(self, message: str):
-        """Using the TCP/UDP as the message passing protocal"""
-        hostname = CONFIG['SERVER']["S1"]["HOST_IP"]
-        port = CONFIG['SERVER']["S1"]["HOST_PORT"]
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(utils.CLIENT_TIMEOUT)
-                s.connect((hostname, port))
-                s.send(json.dumps(message).encode())
-                response = json.loads(s.recv(utils.BUFFER_SIZE).decode())
-                
-        except socket.timeout:
-            print("socket timeout")
-
-
-    def transfer(self):
+    def transfer(self, sender: int, recipient: int, amount: int):
+        """Issue a new transfer transaction"""
         pass
 
     def print_balance(self):
+        """print the balance of this client on all servers"""
         pass
 
 
     def print_data_store(self):
+        """print the committed transactions on all servers"""
         pass
 
 
     def print_performance_metrics(self):
+        """ prints throughput and latency from the time the client initiates a transaction to the time the client process receives a reply message."""
         pass
 
 
 if __name__ == "__main__":
-        client = Client(client_id='A')
+        client = Client()
         # start user interaction
         client.prompt()
