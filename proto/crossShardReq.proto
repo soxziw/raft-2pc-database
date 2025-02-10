@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+enum CrossShardPhaseType {
+  PREPARE = 0;
+  COMMIT = 1;
+  ABORT = 2;
+}
+
+message CrossShardReq {
+  CrossShardPhaseType phase = 1;
+  int32 senderClusterId = 2;
+  int32 receiverClusterId = 3;
+  int32 senderId = 4;
+  int32 receiverId = 5;
+  int32 amount = 6;
+  int32 id = 7;
+}
