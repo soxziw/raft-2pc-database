@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+message PrintBalanceReq {
+  int32 clusterId = 1;
+  int32 serverId = 2;
+  int32 dataItemID = 3;
+}

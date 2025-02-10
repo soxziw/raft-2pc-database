@@ -1,0 +1,53 @@
+{
+    "ROUTING_SERVICE":
+    {
+        "IP": "localhost",
+        "PORT": 8000
+    },
+    "SERVERS":
+    [
+        [
+            {
+                "IP": "localhost", 
+                "PORT": 5001
+            },
+            {
+                "IP": "localhost",
+                "PORT": 5002
+            },
+            {
+                "IP": "localhost",
+                "PORT": 5003
+            }
+        ],
+        [
+            {
+                "IP": "localhost",
+                "PORT": 5004
+            },
+            {
+                "IP": "localhost",
+                "PORT": 5005
+            },
+            {
+                "IP": "localhost",
+                "PORT": 5006
+            }
+        ],
+        [
+            {
+                "IP": "localhost",
+                "PORT": 5007
+            },
+            {
+                "IP": "localhost",
+                "PORT": 5008
+            },
+            {
+                "IP": "localhost",
+                "PORT": 5009
+            }
+        ]
+    ],
+    "MESSAGE_TIMEOUT_MS": 30
+}

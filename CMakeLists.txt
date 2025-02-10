@@ -7,17 +7,33 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
+# Find packages
+find_package(Protobuf REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBURING REQUIRED liburing)
+find_package(Threads REQUIRED)
+
+add_definitions(-DCONFIG_PATH="${CMAKE_SOURCE_DIR}/config.json")
+
+# Set proto files
+file(GLOB PROTO_FILES "${CMAKE_SOURCE_DIR}/proto/*.proto")
+
+# Generate protobuf sources
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})
+
+# Mark generated files as GENERATED
+set_source_files_properties(${PROTO_SRCS} PROPERTIES GENERATED TRUE)
+set_source_files_properties(${PROTO_HDRS} PROPERTIES GENERATED TRUE)
+
 # Add C++ executable (RaftServer)
 file(GLOB_RECURSE CPP_SOURCES "server/src/*.cpp")
-add_executable(RaftServer server/main.cpp ${CPP_SOURCES})
+add_executable(RaftServer server/main.cpp ${CPP_SOURCES} ${PROTO_SRCS})
 
 # Include directories
-include_directories(server/include)
-
-find_package(OpenSSL REQUIRED)
+target_include_directories(RaftServer PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${LIBURING_INCLUDE_DIRS} server/include)
 
 # Link necessary libraries for network and threading functionality
-target_link_libraries(RaftServer ${CMAKE_THREAD_LIBS} ${CMAKE_DL_LIBS} OpenSSL::Crypto)
+target_link_libraries(RaftServer PRIVATE protobuf::libprotobuf ${LIBURING_LIBRARIES} Threads::Threads)
 
 # Add Python client with virtual environment
 add_custom_target(2PCClient ALL
@@ -28,6 +44,22 @@ add_custom_target(2PCClient ALL
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/client
     COMMENT "Creating Python virtual environment and installing dependencies"
 )
+
+# Generate Python protobuf files
+add_custom_command(
+    OUTPUT python_proto
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/client/proto
+    COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+        --python_out=${CMAKE_SOURCE_DIR}/client/proto
+        --proto_path=${CMAKE_SOURCE_DIR}/proto
+        ${PROTO_FILES}
+    DEPENDS ${PROTO_FILES}
+    COMMENT "Generating Python protocol buffers..."
+)
+add_custom_target(generate_python_proto ALL DEPENDS python_proto)
+
+# Make 2PCClient depend on Python proto generation
+add_dependencies(2PCClient generate_python_proto)
 
 # Custom build target for creating RaftServer executables
 add_custom_target(server
@@ -42,7 +74,7 @@ add_custom_target(client
 )
 
 # Custom build target for creating all two executables
-add_custom_target(all
+add_custom_target(raft2pc
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target RaftServer
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target 2PCClient
     DEPENDS RaftServer 2PCClient

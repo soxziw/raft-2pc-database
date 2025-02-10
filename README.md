@@ -63,7 +63,7 @@ make server
 Build both client and server:
 
 ```bash
-make all
+make raft2pc
 ```
 
 Clean everything has been built:
@@ -114,8 +114,8 @@ message WrapperMessage {
 
 ```protobuf
 message Stop {
-  required int32 clusterId = 1;
-  required int32 serverId = 2;
+  int32 clusterId = 1;
+  int32 serverId = 2;
 }
 ```
 
@@ -123,8 +123,8 @@ message Stop {
 
 ```protobuf
 message Resume {
-  required int32 clusterId = 1;
-  required int32 serverId = 2;
+  int32 clusterId = 1;
+  int32 serverId = 2;
 }
 ```
 
@@ -132,11 +132,11 @@ message Resume {
 
 ```protobuf
 message IntraShardReq {
-  required int32 clusterId = 1;
-  required int32 senderId = 2;
-  required int32 receiverId = 3;
-  required int32 amount = 4;
-  required int32 id = 5;
+  int32 clusterId = 1;
+  int32 senderId = 2;
+  int32 receiverId = 3;
+  int32 amount = 4;
+  int32 id = 5;
 }
 ```
 
@@ -149,8 +149,8 @@ enum IntraShardResultType {
 }
 
 message IntraShardRsp {
-  required IntraShardResultType result = 1;
-  required int32 id = 2;
+  IntraShardResultType result = 1;
+  int32 id = 2;
 }
 ```
 
@@ -164,13 +164,13 @@ enum CrossShardPhaseType {
 }
 
 message CrossShardReq {
-  required CrossShardPhaseType phase = 1;
-  required int32 senderClusterId = 2;
-  required int32 receiverClusterId = 3;
-  required int32 senderId = 4;
-  required int32 receiverId = 5;
-  required int32 amount = 6;
-  required int32 id = 7;
+  CrossShardPhaseType phase = 1;
+  int32 senderClusterId = 2;
+  int32 receiverClusterId = 3;
+  int32 senderId = 4;
+  int32 receiverId = 5;
+  int32 amount = 6;
+  int32 id = 7;
 }
 ```
 
@@ -184,19 +184,27 @@ enum CrossShardResultType {
 }
 
 message CrossShardRsp {
-  required CrossShardResultType result = 1;
-  required int32 id = 2;
+  CrossShardResultType result = 1;
+  int32 id = 2;
 }
 ```
 
 ### AppendEntriesReq
 
 ```protobuf
+message LogEntry {
+  int32 term = 1;   // Term when entry was received by leader
+  int32 index = 2;   // Position of entry in the log
+  string command = 3; // Command for state machine
+}
+
 message AppendEntriesReq {
-  required int32 candidateId = 1; // Candidate requesting vote
-  required int32 term = 2; // Candidate's term
-  required int32 lastLogIndex = 3; // Index of candidate's last log entry
-  required int32 lastLogTerm = 4; // Term of candidate's last log entry
+  int32 term = 1; // Leader's term
+  int32 leaderId = 2; // So follower can redirect clients
+  int32 prevLogIndex = 3; // Index of log entry immediately preceding new ones
+  int32 prevLogTerm = 4; // Term of prevLogIndex entry
+  repeated LogEntry entries = 5; // Log entries to store (empty for heartbeat)
+  int32 commitIndex = 6; // Last entry known to be committed
 }
 ```
 
@@ -204,27 +212,19 @@ message AppendEntriesReq {
 
 ```protobuf
 message AppendEntriesRsp {
-  required int32 term = 1; // CurrentTerm, for candidate to update itself
-  required bool voteGranted = 2; // True means candidate received vote
+  int32 term = 1; // CurrentTerm, for leader to update itself
+  bool success = 2; // True if follower contained entry matching prevLogIndex and prevLogTerm
 }
 ```
 
 ### RequestVoteReq
 
 ```protobuf
-message LogEntry {
-  required int32 term = 1;   // Term when entry was received by leader
-  required int32 index = 2;   // Position of entry in the log
-  required string command = 3; // Command for state machine
-}
-
 message RequestVoteReq {
-  required int32 term = 1; // Leader's term
-  required int32 leaderId = 2; // So follower can redirect clients
-  required int32 prevLogIndex = 3; // Index of log entry immediately preceding new ones
-  required int32 prevLogTerm = 4; // Term of prevLogIndex entry
-  repeated LogEntry entries = 5; // Log entries to store (empty for heartbeat)
-  required int32 commitIndex = 6; // Last entry known to be committed
+  int32 candidateId = 1; // Candidate requesting vote
+  int32 term = 2; // Candidate's term
+  int32 lastLogIndex = 3; // Index of candidate's last log entry
+  int32 lastLogTerm = 4; // Term of candidate's last log entry
 }
 ```
 
@@ -232,8 +232,8 @@ message RequestVoteReq {
 
 ```protobuf
 message RequestVoteRsp {
-  required int32 term = 1; // CurrentTerm, for leader to update itself
-  required bool success = 2; // True if follower contained entry matching prevLogIndex and prevLogTerm
+  int32 term = 1; // CurrentTerm, for candidate to update itself
+  bool voteGranted = 2; // True means candidate received vote
 }
 ```
 
@@ -241,9 +241,9 @@ message RequestVoteRsp {
 
 ```protobuf
 message PrintBalanceReq {
-  required int32 clusterId = 1;
-  required int32 serverId = 2;
-  required int32 dataItemID = 3;
+  int32 clusterId = 1;
+  int32 serverId = 2;
+  int32 dataItemID = 3;
 }
 ```
 
@@ -251,10 +251,10 @@ message PrintBalanceReq {
 
 ```protobuf
 message PrintBalanceRsp {
-  required int32 clusterId = 1;
-  required int32 serverId = 2;
-  required int32 dataItemID = 3;
-  required int32 balance = 4;
+  int32 clusterId = 1;
+  int32 serverId = 2;
+  int32 dataItemID = 3;
+  int32 balance = 4;
 }
 ```
 
@@ -262,8 +262,8 @@ message PrintBalanceRsp {
 
 ```protobuf
 message PrintDatastoreReq {
-  required int32 clusterId = 1;
-  required int32 serverId = 2;
+  int32 clusterId = 1;
+  int32 serverId = 2;
 }
 ```
 
@@ -271,8 +271,8 @@ message PrintDatastoreReq {
 
 ```protobuf
 message PrintDatastoreRsp {
-  required int32 clusterId = 1;
-  required int32 serverId = 2;
+  int32 clusterId = 1;
+  int32 serverId = 2;
   repeated LogEntry entries = 3;
 }
 ```

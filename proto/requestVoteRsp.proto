@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+message RequestVoteRsp {
+  int32 term = 1; // CurrentTerm, for candidate to update itself
+  bool voteGranted = 2; // True means candidate received vote
+}
