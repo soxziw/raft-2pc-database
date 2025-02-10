@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+message Resume {
+  int32 clusterId = 1;
+  int32 serverId = 2;
+}

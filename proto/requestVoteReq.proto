@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+message RequestVoteReq {
+  int32 candidateId = 1; // Candidate requesting vote
+  int32 term = 2; // Candidate's term
+  int32 lastLogIndex = 3; // Index of candidate's last log entry
+  int32 lastLogTerm = 4; // Term of candidate's last log entry
+}

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+import "stop.proto";
+import "resume.proto";
+import "intraShardReq.proto";
+import "intraShardRsp.proto";
+import "crossShardReq.proto";
+import "crossShardRsp.proto";
+import "appendEntriesReq.proto";
+import "appendEntriesRsp.proto";
+import "requestVoteReq.proto";
+import "requestVoteRsp.proto";
+import "printBalanceReq.proto";
+import "printBalanceRsp.proto";
+import "printDatastoreReq.proto";
+import "printDatastoreRsp.proto";
+import "exit.proto";
+
+message WrapperMessage {
+  oneof message_type {
+    Stop stop = 1;
+    Resume resume = 2;
+    IntraShardReq intraShardReq = 3;
+    IntraShardRsp intraShardRsp = 4;
+    CrossShardReq crossShardReq = 5;
+    CrossShardRsp crossShardRsp = 6;
+    AppendEntriesReq appendEntriesReq = 7;
+    AppendEntriesRsp appendEntriesRsp = 8;
+    RequestVoteReq requestVoteReq = 9;
+    RequestVoteRsp requestVoteRsp = 10;
+    PrintBalanceReq printBalanceReq = 11;
+    PrintBalanceRsp printBalanceRsp = 12;
+    PrintDatastoreReq printDatastoreReq = 13;
+    PrintDatastoreRsp printDatastoreRsp = 14;
+    Exit exit = 15;
+  }
+}

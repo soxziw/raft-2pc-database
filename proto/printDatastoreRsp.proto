@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+import "appendEntriesReq.proto";
+
+message PrintDatastoreRsp {
+  int32 clusterId = 1;
+  int32 serverId = 2;
+  repeated Entry entries = 3;
+}

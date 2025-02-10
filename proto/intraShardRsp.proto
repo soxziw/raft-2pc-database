@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+enum IntraShardResultType {
+  SUCCESS = 0;
+  FAIL = 1;
+}
+
+message IntraShardRsp {
+  IntraShardResultType result = 1;
+  int32 id = 2;
+}
