@@ -192,7 +192,7 @@ message CrossShardRsp {
 ### AppendEntriesReq
 
 ```protobuf
-message LogEntry {
+message Entry {
   int32 term = 1;   // Term when entry was received by leader
   int32 index = 2;   // Position of entry in the log
   string command = 3; // Command for state machine
@@ -203,7 +203,7 @@ message AppendEntriesReq {
   int32 leaderId = 2; // So follower can redirect clients
   int32 prevLogIndex = 3; // Index of log entry immediately preceding new ones
   int32 prevLogTerm = 4; // Term of prevLogIndex entry
-  repeated LogEntry entries = 5; // Log entries to store (empty for heartbeat)
+  repeated Entry entries = 5; // Log entries to store (empty for heartbeat)
   int32 commitIndex = 6; // Last entry known to be committed
 }
 ```
