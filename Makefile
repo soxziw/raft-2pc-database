@@ -2,12 +2,12 @@
 
 client:
 	@mkdir -p build
-	@CC=/usr/bin/clang CXX=/usr/bin/clang++ cmake -B build -S .
+	@CC=/usr/bin/clang CXX=/usr/bin/clang++ cmake -DBUILD_CLIENT=ON -DBUILD_SERVER=OFF -B build -S .
 	@make -C build client | grep -vE "make\[[0-9]+\]"
 
 server:
 	@mkdir -p build
-	@CC=/usr/bin/clang CXX=/usr/bin/clang++ cmake -B build -S .
+	@CC=/usr/bin/clang CXX=/usr/bin/clang++ cmake -DBUILD_CLIENT=OFF -DBUILD_SERVER=ON -B build -S .
 	@make -C build server | grep -vE "make\[[0-9]+\]"
 
 raft2pc:
