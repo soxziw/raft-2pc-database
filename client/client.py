@@ -1,10 +1,14 @@
 
 import time
-import json
+import json, threading
 import utils
 import re, os, sys
 from handler import TransactionHandler
+from routingservice import RoutingService
 
+
+with open('../config.json') as f:
+    CONFIG = json.load(f)
 
 
 class Client:
@@ -12,6 +16,8 @@ class Client:
     def __init__(self):
         # self.client_id = client_id
         self.create_time = utils.get_current_time()
+        self.routing_service = RoutingService(CONFIG['ROUTING_SERVICE']['IP'],int(CONFIG['ROUTING_SERVICE']['PORT']))
+    
 
     def __repr__(self):
         return f"Client(created_time={self.create_time})"
@@ -89,7 +95,7 @@ class Client:
             print("Invalid transfer command: Amount must be positive integer")
             return
         
-        print(f"user {sender_id} requests transfering ${amount} to {recipient_id}...")
+        print(f"User {sender_id} requests transfering ${amount} to user {recipient_id}...")
         TransactionHandler.transfer(sender_id, recipient_id, amount)
 
     def print_balance(self, user_id: int):
@@ -97,16 +103,24 @@ class Client:
         if user_id not in range(1, 3001) or user_id not in range(1, 3001):
             print('Invalid balance command: user id must be integers from 1 to 3000')
             return
-        print(f"Retrieving balance for {user_id} from all servers...")
+        print(f"Retrieving balance for user {user_id} from all servers...")
+        print('-'*30)
         balance_res =  TransactionHandler.get_balance(user_id)
         for i in range(len(balance_res)):
-            print(f"   clusterId:{balance_res[i][0]}, serverId: {balance_res[i][1]}, {balance_res[i][2]}")
+            print(f"   clusterId: {balance_res[i][0]}, serverId: {balance_res[i][1]}, balance: ${balance_res[i][2]}")
+            print('-'*30)
         
 
 
     def print_data_store(self):
         """Print the committed transactions on all servers"""
-        return TransactionHandler.get_data_store()
+        print(f"Retrieving data store from all servers...")
+        print('-'*30)
+        datastore_res =  TransactionHandler.get_data_store()
+        for i in range(len(datastore_res)):
+            print(f"   clusterId: {datastore_res[i][0]}, serverId: {datastore_res[i][1]}, term: {datastore_res[i][2]},
+                   index: {datastore_res[i][3]}, command: {datastore_res[i][4]}")
+            print('-'*30)
 
 
     def print_performance_metrics(self):
@@ -128,6 +142,10 @@ class Client:
         TransactionHandler.resume(server_id)
 
 if __name__ == "__main__":
+        
         client = Client()
+        # start the routing service
+        client.routing_service.start()
+
         # start user interaction
         client.prompt()

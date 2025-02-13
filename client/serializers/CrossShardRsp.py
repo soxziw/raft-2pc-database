@@ -2,6 +2,7 @@ import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from proto.crossShardRsp_pb2 import CrossShardRsp, CrossShardResultType
+from proto.wrapperMessage_pb2 import WrapperMessage
 
 
 class CrossShardRspSerializer:
@@ -16,11 +17,12 @@ class CrossShardRspSerializer:
             cross_shard_response.result = CrossShardResultType.ACK
 
         cross_shard_response.id = id
-        return cross_shard_response.SerializeToString()
+        return WrapperMessage(crossShardRsp=cross_shard_response).SerializeToString()
     
 
     def parse(cross_shard_response_str: bytes):
-        cross_shard_response = CrossShardRsp()
-        cross_shard_response.ParseFromString(cross_shard_response_str)
-        return cross_shard_response
+        wrapper = WrapperMessage()
+        wrapper.ParseFromString(cross_shard_response_str)
+        if wrapper.HasField("crossShardRsp"):
+            return wrapper.crossShardRsp
 

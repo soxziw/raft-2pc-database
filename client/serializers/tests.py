@@ -8,7 +8,7 @@ from proto.crossShardRsp_pb2 import CrossShardResultType
 from proto.appendEntriesReq_pb2 import Entry
 from serializers.IntraShardReq import IntraShardReqSerializer
 from serializers.CrossShardReq import CrossShardReqSerializer
-from serializers.IntraShardRsp import IntraShardRspSerialier
+from serializers.IntraShardRsp import IntraShardRspSerializer
 from serializers.CrossShardRsp import CrossShardRspSerializer
 from serializers.Resume import ResumeSerializer
 from serializers.Stop import StopSerializer
@@ -16,7 +16,7 @@ from serializers.printBalanceReq import printBalanceReqSerializer
 from serializers.printBalanceRsp import printBalanceRspSerializer
 from serializers.printDatastoreReq import printDatastoreReqSerializer
 from serializers.printDatastoreRsp import printDatastoreRspSerializer
-
+from proto.wrapperMessage_pb2 import WrapperMessage
 
 
 class Test2PCClient(unittest.TestCase):
@@ -30,8 +30,8 @@ class Test2PCClient(unittest.TestCase):
         self.assertEqual(deserialized_intra_shard_req.amount, 5)
 
     def test_intra_shard_rsp(self):
-        intra_shard_rsp_str = IntraShardRspSerialier.to_str(result=0, id=10)
-        deserialized_intra_shard_rsp = IntraShardRspSerialier.parse(intra_shard_rsp_str)
+        intra_shard_rsp_str = IntraShardRspSerializer.to_str(result=0, id=10)
+        deserialized_intra_shard_rsp = IntraShardRspSerializer.parse(intra_shard_rsp_str)
         self.assertEqual(deserialized_intra_shard_rsp.result, IntraShardResultType.SUCCESS)
         self.assertEqual(deserialized_intra_shard_rsp.id, 10)
 
@@ -73,7 +73,6 @@ class Test2PCClient(unittest.TestCase):
         entries = [Entry(term=1, index = 2,command = "election")]
         print_datastore_rsp_str = printDatastoreRspSerializer.to_str(clusterId=1, serverId=5, entries=entries)
         deserialized_print_datastore_rsp = printDatastoreRspSerializer.parse(print_datastore_rsp_str)
-        print(deserialized_print_datastore_rsp)
         self.assertEqual(deserialized_print_datastore_rsp.clusterId, 1)
         self.assertEqual(deserialized_print_datastore_rsp.serverId, 5)
         self.assertEqual(deserialized_print_datastore_rsp.entries[0].term, 1)

@@ -2,6 +2,7 @@ import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from proto.crossShardReq_pb2 import CrossShardReq, CrossShardPhaseType
+from proto.wrapperMessage_pb2 import WrapperMessage
 
 
 class CrossShardReqSerializer:
@@ -21,13 +22,14 @@ class CrossShardReqSerializer:
         cross_shard_request.senderId = senderId
         cross_shard_request.receiverId = receiverId
         cross_shard_request.amount = amount
-        return cross_shard_request.SerializeToString()
+        return WrapperMessage(crossShardReq=cross_shard_request).SerializeToString()
     
 
     def parse(cross_shard_request_str: bytes):
-        cross_shard_request = CrossShardReq()
-        cross_shard_request.ParseFromString(cross_shard_request_str)
-        return cross_shard_request
+        wrapper = WrapperMessage()
+        wrapper.ParseFromString(cross_shard_request_str)
+        if wrapper.HasField("crossShardReq"):
+            return wrapper.crossShardReq
 
 
 
