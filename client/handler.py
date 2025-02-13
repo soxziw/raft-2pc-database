@@ -21,13 +21,13 @@ class TransactionHandler:
         sender_cluser_id = LocalConfig.get_cluster_id_for_user(sender_id)
         recipient_cluser_id = LocalConfig.get_cluster_id_for_user(recipient_id)
         if sender_cluser_id == recipient_cluser_id:
-            cls.send_intra_shard_transaction(sender_cluser_id, sender_id, recipient_id, amount)
+            cls.send_intra_shard_transaction_to_routingservice(sender_cluser_id, sender_id, recipient_id, amount)
         else:
-            cls.send_cross_shard_transaction(sender_cluser_id, recipient_cluser_id, sender_id, recipient_id, amount)
+            cls.send_cross_shard_transaction_to_routingservice(sender_cluser_id, recipient_cluser_id, sender_id, recipient_id, amount)
 
     
     @classmethod
-    def send_intra_shard_transaction(cls, cluser_id: int, sender_id: int, recipient_id: int, amount: int):
+    def send_intra_shard_transaction_to_routingservice(cls, cluser_id: int, sender_id: int, recipient_id: int, amount: int):
         """Sending a intra-shard transaction request to the routing service"""
 
         message = IntraShardReqSerializer.to_str(clusterId=cluser_id, senderId=sender_id, receiverId=recipient_id, amount=amount, id=1)
@@ -47,9 +47,9 @@ class TransactionHandler:
 
 
     @classmethod
-    def send_cross_shard_transaction(cls, sender_cluser_id: int, recipient_cluser_id: int, sender_id: int, recipient_id: int, amount: int):
+    def send_cross_shard_transaction_to_routingservice(cls, sender_cluser_id: int, recipient_cluser_id: int, sender_id: int, recipient_id: int, amount: int):
         """Sending a cross-shard transaction request to the routing service"""
-        message = CrossShardReqSerializer.to_str(0, sender_cluser_id, recipient_cluser_id, sender_id, recipient_id, amount, id)
+        message = CrossShardReqSerializer.to_str(0, sender_cluser_id, recipient_cluser_id, sender_id, recipient_id, amount, 0)
         ip, port = LocalConfig.routing_service_ip_port
         
         print("Sending cross-shard transaction request to routing service...")

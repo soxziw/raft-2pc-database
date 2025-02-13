@@ -3,7 +3,9 @@ import utils
 
 
 
-class CrossShardTransactionManager:
+class TransactionManager:
+
+
 
     @classmethod
     def send_message(cls, hostname: str, port: int, message):
