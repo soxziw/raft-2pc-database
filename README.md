@@ -179,7 +179,7 @@ message CrossShardReq {
 ```protobuf
 enum CrossShardResultType {
   YES = 0; // Prepare phase
-  ABORT = 1; // Prepare phase
+  NO = 1; // Prepare phase
   ACK = 2; // Commit/Abort phase
 }
 

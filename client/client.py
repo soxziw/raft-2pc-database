@@ -1,26 +1,26 @@
-import threading
-import timeloop
-import socket
+
 import time
-import json
-from datetime import timedelta
-from typing import List
+import json, threading
 import utils
 import re, os, sys
-from utils import TransactionStatus, MessageType, TransactionType
+from handler import TransactionHandler
+from routingservice import RoutingService
 
 
-with open('config.json') as f:
+with open('../config.json') as f:
     CONFIG = json.load(f)
+
 
 class Client:
     """The client"""
-    def __init__(self, client_id: str):
-        self.client_id = client_id
+    def __init__(self):
+        # self.client_id = client_id
         self.create_time = utils.get_current_time()
+        self.routing_service = RoutingService(CONFIG['ROUTING_SERVICE']['IP'],int(CONFIG['ROUTING_SERVICE']['PORT']))
+    
 
     def __repr__(self):
-        return f"Client(id={self.client_id}, created_time={self.create_time})"
+        return f"Client(created_time={self.create_time})"
     
 
     def prompt(self):
@@ -33,17 +33,36 @@ class Client:
                 os._exit(0)
             elif re.match(r'^(transfer|t)\s+\d+\s+\d+(\.\d+)?$', cmd):
                 try:
-                    recipient, amount = cmd.split()[1:]
+                    sender, recipient, amount = cmd.split()[1:]
                 except ValueError:
                     print('Invalid transfer command')
                     continue
-                self.send_transaction(int(recipient), float(amount))
+                self.transfer(int(sender), int(recipient), int(amount))
             elif re.match(r'(balance|bal|b)$', cmd):
-                self.print_balance()
+                try:
+                    user = cmd.split()[1:]
+                except ValueError:
+                    print('Invalid balance command')
+                    continue
+                self.print_balance(int(user))
             elif re.match(r'datastore|ds', cmd):
                 self.print_data_store()
-            elif re.match(r'|p', cmd):
+            elif re.match(r'performance|p', cmd):
                 self.print_performance_metrics()
+            elif re.match(r'stop|s', cmd):
+                try:
+                    server_id = cmd.split()[1:]
+                except ValueError:
+                    print('Invalid balance command')
+                    continue
+                self.stop(int(server_id))
+            elif re.match(r'resume|r', cmd):
+                try:
+                    server_id = cmd.split()[1:]
+                except ValueError:
+                    print('Invalid balance command')
+                    continue
+                self.resume(int(server_id))
             else:
                 print('Invalid command, please re-enter')
             print()
@@ -52,47 +71,81 @@ class Client:
     def help(self):
         """Help for user interaction"""
         time.sleep(1)
-        print('This is the CS271 blockchain client interface.')
+        print('This is the CS271 final project user interface.')
         print('User Commands:')
-        print('  1. transfer <recipient_id> <amount_to_transfer> (e.g., transfer 2 10, or, t 3 5): transfer <amount_to_transfer> to <recipient_id>')
-        print('  2. balance (or bal, b): print the balance of the client')
-        print('  3. datastore (or abal, ab): print the committed transactions of each server')
-        print('  4. performance (or print, p): print the throughput and latency of the transaction')
-        print('  5. exit (or quit, q): exit the client interface')
+        print('  1. transfer <sender_id> <recipient_id> <amount_to_transfer> (e.g., transfer 1 2 10, or, t 1 3 5): <sender_id> transfer <amount_to_transfer> to <recipient_id>')
+        print('  2. balance <user_id>(or bal, b): print the balance of <user_id>')
+        print('  3. datastore (or ds): print the committed transactions of each server')
+        print('  4. stop <server_id> (or s): stop the designated server')
+        print('  5. resume <server_id> (or r): resume the designated server')
+        print('  6. performance (or p): print the throughput and latency of the transaction')
+        print('  7. exit (or quit, q): exit the client interface')
         print('Please enter a command:')
 
 
-    def send_transaction(self, message: str):
-        """Using the TCP/UDP as the message passing protocal"""
-        hostname = CONFIG['SERVER']["S1"]["HOST_IP"]
-        port = CONFIG['SERVER']["S1"]["HOST_PORT"]
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(utils.CLIENT_TIMEOUT)
-                s.connect((hostname, port))
-                s.send(json.dumps(message).encode())
-                response = json.loads(s.recv(utils.BUFFER_SIZE).decode())
-                
-        except socket.timeout:
-            print("socket timeout")
+    def transfer(self, sender_id: int, recipient_id: int, amount: int):
+        """Issue a new transfer transaction"""
+        if sender_id is None or recipient_id is None or amount is None:
+            print('Invalid transfer command: sender and receiver must not be null')
+            return
+        if sender_id not in range(1, 3001) or recipient_id not in range(1, 3001):
+            print('Invalid transfer command: sender and receiver must be integers from 1 to 3000')
+            return
+        if amount < 0 or type(amount) is not type(int):
+            print("Invalid transfer command: Amount must be positive integer")
+            return
+        
+        print(f"User {sender_id} requests transfering ${amount} to user {recipient_id}...")
+        TransactionHandler.transfer(sender_id, recipient_id, amount)
 
-
-    def transfer(self):
-        pass
-
-    def print_balance(self):
-        pass
+    def print_balance(self, user_id: int):
+        """Print the balance of this user on all servers"""
+        if user_id not in range(1, 3001) or user_id not in range(1, 3001):
+            print('Invalid balance command: user id must be integers from 1 to 3000')
+            return
+        print(f"Retrieving balance for user {user_id} from all servers...")
+        print('-'*30)
+        balance_res =  TransactionHandler.get_balance(user_id)
+        for i in range(len(balance_res)):
+            print(f"   clusterId: {balance_res[i][0]}, serverId: {balance_res[i][1]}, balance: ${balance_res[i][2]}")
+            print('-'*30)
+        
 
 
     def print_data_store(self):
-        pass
+        """Print the committed transactions on all servers"""
+        print(f"Retrieving data store from all servers...")
+        print('-'*30)
+        datastore_res =  TransactionHandler.get_data_store()
+        for i in range(len(datastore_res)):
+            print(f"   clusterId: {datastore_res[i][0]}, serverId: {datastore_res[i][1]}, term: {datastore_res[i][2]}, \
+                  index: {datastore_res[i][3]}, command: {datastore_res[i][4]}")
+            print('-'*30)
 
 
     def print_performance_metrics(self):
+        """Prints throughput and latency from the time the client initiates a transaction to the time the client process receives a reply message."""
         pass
 
+    def stop(self, server_id):
+        if server_id not in range(1, 10):
+            print('Invalid stop command: server id must be integers from 1 to 9')
+            return
+        print(f"Stoping server {server_id}...")
+        TransactionHandler.stop(server_id)
+    
+    def resume(self, server_id):
+        if server_id not in range(1, 10):
+            print('Invalid resume command: server id must be integers from 1 to 9')
+            return
+        print(f"Resuming server {server_id}...")
+        TransactionHandler.resume(server_id)
 
 if __name__ == "__main__":
-        client = Client(client_id='A')
+        
+        client = Client()
+        # start the routing service
+        client.routing_service.start()
+
         # start user interaction
         client.prompt()
