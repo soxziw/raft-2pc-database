@@ -66,6 +66,7 @@ void AIOServer::broadcast_heart_beat() {
             entry->set_term(raft_state_->log_[log_idx].term);
             entry->set_index(raft_state_->log_[log_idx].index);
             entry->set_command(raft_state_->log_[log_idx].command);
+            entry->set_id(raft_state_->log_[log_idx].id);
         }
         raft_state_->coming_commit_index_ = raft_state_->log_.size() - 1;
         req->set_commitindex(raft_state_->commit_index_);

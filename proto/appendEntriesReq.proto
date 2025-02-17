@@ -4,6 +4,7 @@ message Entry {
   int32 term = 1;   // Term when entry was received by leader
   int32 index = 2;   // Position of entry in the log
   string command = 3; // Command for state machine
+  int32 id = 4;
 }
 
 message AppendEntriesReq {
