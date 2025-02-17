@@ -23,7 +23,15 @@ public:
     Role role_;
     int vote_granted_num_;
     std::vector<LogEntry> log_; // log entries
+    int log_granted_num_;
+    int coming_commit_index_;
+    int commit_index_;
+    std::vector<int> next_log_index_;
     std::unordered_map<int, int> local_balance_tb_;
 
     RaftState();
+    int lastlogindex();
+    int lastlogterm();
+    int prevlogindex(int idx);
+    int prevlogterm(int idx);
 };

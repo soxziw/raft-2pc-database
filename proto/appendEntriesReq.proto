@@ -13,4 +13,5 @@ message AppendEntriesReq {
   int32 prevLogTerm = 4; // Term of prevLogIndex entry
   repeated Entry entries = 5; // Log entries to store (empty for heartbeat)
   int32 commitIndex = 6; // Last entry known to be committed
+  int32 serverId = 7;
 }

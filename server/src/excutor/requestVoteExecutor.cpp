@@ -5,7 +5,7 @@
 void RequestVoteExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const RequestVoteReq& req) {
     WrapperMessage* wrapper_msg = new WrapperMessage;
     RequestVoteRsp* rsp = wrapper_msg->mutable_requestvotersp();
-    if (req.term() < raft_state->current_term_) {
+    if ((req.term() < raft_state->current_term_) || (req.term() == raft_state->current_term_ && req.lastlogindex() < raft_state->lastlogindex())) {
         rsp->set_term(raft_state->current_term_);
         rsp->set_votegranted(false);
     } else {
@@ -32,6 +32,7 @@ void RequestVoteExecutor::executeRsp(int client_socket, std::shared_ptr<AsyncIO>
             raft_state->vote_granted_num_++;
             if (raft_state->vote_granted_num_ >= 2) {
                 raft_state->role_ = Role::LEADER;
+                raft_state->next_log_index_ = std::vector<int>(raft_state->log_.size(), 3);
             }
         }
     }

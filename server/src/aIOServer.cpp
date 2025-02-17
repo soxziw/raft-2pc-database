@@ -16,7 +16,6 @@
 #include "executor/intraShardExecutor.hpp"
 #include "executor/crossShardExecutor.hpp"
 
-const int SERVER_NUM_PER_CLUSTER = 3;
 
 AIOServer::AIOServer(int cluster_id, int server_id,
     const std::pair<std::string, int>& routing_service_ip_port_pair,
@@ -44,8 +43,8 @@ void AIOServer::broadcast_vote() {
         RequestVoteReq* req = wrapper_msg->mutable_requestvotereq();
         req->set_candidateid(server_id_);
         req->set_term(raft_state_->current_term_);
-        req->set_lastlogindex(raft_state_->log_.size());
-        req->set_lastlogterm(raft_state_->log_.empty() ? -1 : raft_state_->log_.back().term);
+        req->set_lastlogindex(raft_state_->lastlogindex());
+        req->set_lastlogterm(raft_state_->lastlogterm());
 
         aio_->add_connect_request(server_ip_port_pairs_[cluster_id_][idx].first, server_ip_port_pairs_[cluster_id_][idx].second, wrapper_msg, AIOMessageType::WAIT_RESPONSE);
     }
@@ -60,7 +59,17 @@ void AIOServer::broadcast_heart_beat() {
         AppendEntriesReq* req = wrapper_msg->mutable_appendentriesreq();
         req->set_term(raft_state_->current_term_);
         req->set_leaderid(server_id_);
-        //TODO
+        req->set_prevlogindex(raft_state_->prevlogindex(idx));
+        req->set_prevlogterm(raft_state_->prevlogterm(idx));
+        for (int log_idx = raft_state_->next_log_index_[idx]; log_idx < raft_state_->log_.size(); log_idx++) {
+            Entry* entry = req->add_entries();
+            entry->set_term(raft_state_->log_[log_idx].term);
+            entry->set_index(raft_state_->log_[log_idx].index);
+            entry->set_command(raft_state_->log_[log_idx].command);
+        }
+        raft_state_->coming_commit_index_ = raft_state_->log_.size() - 1;
+        req->set_commitindex(raft_state_->commit_index_);
+        req->set_serverid(server_id_ / SERVER_NUM_PER_CLUSTER * SERVER_NUM_PER_CLUSTER + idx);
 
         aio_->add_connect_request(server_ip_port_pairs_[cluster_id_][idx].first, server_ip_port_pairs_[cluster_id_][idx].second, wrapper_msg, AIOMessageType::WAIT_RESPONSE);
     }
@@ -119,6 +128,7 @@ void AIOServer::run(int server_socket) {
                         raft_state_->current_term_++;
                         broadcast_vote();
                     }
+                    raft_state_->heard_heart_beat_ = false;
                     aio_->add_timeout(200);
                 } else if (raft_state_->role_ == Role::CANDIDATE) {
                     raft_state_->current_term_++;

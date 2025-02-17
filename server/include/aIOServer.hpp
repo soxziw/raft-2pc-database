@@ -7,6 +7,8 @@
 #include "raftState.hpp"
 #include "wrapperMessage.pb.h"
 
+const int SERVER_NUM_PER_CLUSTER = 3;
+
 class AIOServer {
 public:
     AIOServer(int cluster_id, int server_id,
