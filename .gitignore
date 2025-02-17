@@ -35,4 +35,9 @@ client/proto/*
 *.out
 *.app
 
+# Python cache files
+__pycache__/
+
 .vscode/*
+
+.DS_Store
