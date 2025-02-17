@@ -3,16 +3,17 @@ cmake_minimum_required(VERSION 3.14)
 # Set the project name
 project(Raft2PC CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
 if(BUILD_SERVER)
     # Find packages for server
     find_package(Protobuf REQUIRED)
     find_package(PkgConfig REQUIRED)
+    find_package(fmt REQUIRED)
     pkg_check_modules(LIBURING REQUIRED liburing)
-    find_package(Threads REQUIRED)
 
     add_definitions(-DCONFIG_PATH="${CMAKE_SOURCE_DIR}/config.json")
 
@@ -34,7 +35,7 @@ if(BUILD_SERVER)
     target_include_directories(RaftServer PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${LIBURING_INCLUDE_DIRS} server/include)
 
     # Link necessary libraries for network and threading functionality
-    target_link_libraries(RaftServer PRIVATE protobuf::libprotobuf ${LIBURING_LIBRARIES} Threads::Threads)
+    target_link_libraries(RaftServer PRIVATE protobuf::libprotobuf ${LIBURING_LIBRARIES} fmt::fmt)
 
     # Custom build target for creating RaftServer executables
     add_custom_target(server

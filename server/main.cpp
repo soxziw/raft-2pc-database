@@ -1,10 +1,11 @@
 #include <sys/wait.h>
 #include <csignal>
 #include <fcntl.h>
+#include <arpa/inet.h>
 
 
 #include "nlohmann/json.hpp"
-#include "server.hpp"
+#include "aIOServer.hpp"
 #include "exit.pb.h"
 
 void cmd(std::vector<std::vector<std::pair<std::string, int>>> server_ip_port_pairs) {
@@ -34,8 +35,8 @@ void cmd(std::vector<std::vector<std::pair<std::string, int>>> server_ip_port_pa
                     // Connect to server
                     struct sockaddr_in servaddr;
                     servaddr.sin_family = AF_INET;
-                    servaddr.sin_port = htons(server_ip_port_pairs[cluster_id][server_id].second);
-                    inet_pton(AF_INET, server_ip_port_pairs[cluster_id][server_id].first.c_str(), &servaddr.sin_addr);
+                    servaddr.sin_port = htons(server_ip_port_pairs[cluster_id][index].second);
+                    inet_pton(AF_INET, server_ip_port_pairs[cluster_id][index].first.c_str(), &servaddr.sin_addr);
 
                     if (connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0) {
                         std::printf("\033[31m[Error] Failed to connect to cluster %d server %d\033[0m\n",
@@ -141,7 +142,7 @@ int main(int argc, char* argv[]) {
             pid_t pid = fork();
             if (pid == 0) {
                 // Child process - create and run server
-                Server server(cluster_id, server_id, routing_service_ip_port_pair, server_ip_port_pairs, message_timeout_ms);
+                AIOServer server(cluster_id, server_id, routing_service_ip_port_pair, server_ip_port_pairs, message_timeout_ms);
                 return 0;
             } else if (pid > 0) {
                 // Parent process - store child pid

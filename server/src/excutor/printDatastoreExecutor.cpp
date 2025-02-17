@@ -1,11 +1,12 @@
 #include "executor/printDatastoreExecutor.hpp"
+#include "asyncIO.hpp"
 
 
-void PrintDatastoreExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const PrintDatastoreReq& msg) { 
-    WrapperMessage wrapper_msg; 
-    PrintDatastoreRsp* rsp = wrapper_msg.mutable_printdatastorersp();
-    rsp->set_clusterid(msg.clusterid());
-    rsp->set_serverid(msg.serverid());
+void PrintDatastoreExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const PrintDatastoreReq& req) { 
+    WrapperMessage* wrapper_msg = new WrapperMessage; 
+    PrintDatastoreRsp* rsp = wrapper_msg->mutable_printdatastorersp();
+    rsp->set_clusterid(req.clusterid());
+    rsp->set_serverid(req.serverid());
 
     // Copy log entries to response
     for (const auto& entry : raft_state->log_) {
@@ -16,5 +17,5 @@ void PrintDatastoreExecutor::executeReq(int client_socket, std::shared_ptr<Async
     }
 
     // Send response back to client
-    aio->async_write(client_socket, wrapper_msg, nullptr);
+    aio->add_write_request_msg(client_socket, wrapper_msg, AIOMessageType::NO_RESPONSE);
 }

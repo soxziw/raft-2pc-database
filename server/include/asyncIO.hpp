@@ -1,38 +1,52 @@
 #pragma once
-#include <pthread.h>
 #include <liburing.h>
-#include <vector>
-#include <queue>
-#include <mutex>
-#include <condition_variable>
-#include <functional>
 #include <memory>
-#include <unistd.h>
 
-#include "ioData.hpp"
 #include "wrapperMessage.pb.h"
+
+enum AIOEventType {
+    EVENT_ACCEPT = 1,
+    EVENT_CONNECT = 2,
+    EVENT_READ = 3,
+    EVENT_WRITE = 4,
+    EVENT_TIMEOUT = 5,
+};
+
+enum AIOMessageType {
+    NONE = 1,
+    WAIT_RESPONSE = 2,
+    NO_RESPONSE = 3,
+};
+
+class AIOData {
+public:
+    int fd;
+    AIOEventType event_type;
+    char* buf;
+    int buf_size;
+    AIOMessageType message_type;
+};
 
 class AsyncIO {
 public:
     AsyncIO(int message_timeout_ms = 30);
 
-    ~AsyncIO();
+    void set_nonblocking(int sockfd);
 
-    void async_read(int fd, std::function<void(const WrapperMessage&)> callback);
+    void set_timer(struct io_uring_sqe* sqe);
 
-    void async_write(int fd, const WrapperMessage& wrapper_msg, std::function<void()> callback);
+    void add_timeout(int message_timeout_ms);
 
-    void masterThreadFunc();
+    void add_accept_request(int server_socket);
 
-    void workerThreadFunc();
+    void add_connect_request(const std::string& ip, int port, WrapperMessage* wrapper_msg, AIOMessageType msg_type);
+
+    void add_read_request(int client_socket);
+
+    void _add_write_request_buf(int client_socket, char* buf, int buf_size, AIOMessageType msg_type);
+
+    void add_write_request_msg(int client_socket, WrapperMessage* wrapper_msg, AIOMessageType msg_type);
 
     struct io_uring ring_;
-    pthread_t master_thread_;
-    std::vector<pthread_t> worker_threads_;
-    std::queue<std::function<void()>> task_queue_;
-    std::mutex mutex_;
-    std::condition_variable cond_var_;
-    bool keep_running_;
     int message_timeout_ms_;
-    const int num_workers_ = 4;
 };
