@@ -24,8 +24,9 @@ AIOServer::AIOServer(int cluster_id, int server_id,
         routing_service_ip_port_pair_(routing_service_ip_port_pair),
         server_ip_port_pairs_(server_ip_port_pairs),
         pretend_fail_(false), keep_running_(true),
-        raft_state_(std::make_shared<RaftState>()),
+        raft_state_(std::make_shared<RaftState>(cluster_id, server_id)),
         aio_(std::make_shared<AsyncIO>(message_timeout_ms)) {
+    load_data_shard(raft_state_);
     int server_socket = setup_listening_socket(server_ip_port_pairs[cluster_id][server_id % SERVER_NUM_PER_CLUSTER].second);
     run(server_socket);
 }
@@ -172,7 +173,7 @@ void AIOServer::run(int server_socket) {
                 break;
             }
             case AIOEventType::EVENT_READ: {
-                WrapperMessage* wrapper_msg = new WrapperMessage;
+                WrapperMessage* wrapper_msg;
                 parse_buf_to_msg(wrapper_msg, data->buf, cqe->res);
                 delete data;
                 // process
