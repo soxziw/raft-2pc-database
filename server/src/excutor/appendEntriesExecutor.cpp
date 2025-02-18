@@ -6,6 +6,7 @@
 #include "crossShardRsp.pb.h"
 #include "asyncIO.hpp"
 #include "aIOServer.hpp"
+#include "util.hpp"
 
 
 void AppendEntriesExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const AppendEntriesReq& req) {
@@ -54,7 +55,10 @@ void AppendEntriesExecutor::executeReq(int client_socket, std::shared_ptr<AsyncI
                     raft_state->local_balance_tb_[receiver_id] += amount;
                 }
             }
-            raft_state->commit_index_ = req.commitindex();
+            if (raft_state->commit_index_ != req.commitindex()) {
+                update_data_shard(raft_state);
+                raft_state->commit_index_ = req.commitindex();
+            }
             rsp->set_term(raft_state->current_term_);
             rsp->set_success(true);
         }
@@ -102,7 +106,10 @@ void AppendEntriesExecutor::executeRsp(int client_socket, std::shared_ptr<AsyncI
                             }
                         }
                     }
-                    raft_state->commit_index_ = raft_state->coming_commit_index_;
+                    if (raft_state->commit_index_ != raft_state->coming_commit_index_) {
+                        update_data_shard(raft_state);
+                        raft_state->commit_index_ = raft_state->coming_commit_index_;
+                    }
                 }
                 raft_state->next_log_index_[rsp.serverid() % SERVER_NUM_PER_CLUSTER] = raft_state->coming_commit_index_ + 1;
             } else {

@@ -8,7 +8,7 @@
 
 void CrossShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const CrossShardReq& req) {
     if (req.phase() == CrossShardPhaseType::PREPARE) {
-        if ((req.senderclusterid() == raft_state->cluster_id_ && raft_state->local_lock_[req.senderid()])
+        if ((req.senderclusterid() == raft_state->cluster_id_ && (raft_state->local_lock_[req.senderid()] || raft_state->local_balance_tb_[req.senderid()] < req.amount()))
             || (req.receiverclusterid() == raft_state->cluster_id_ && raft_state->local_lock_[req.receiverid()])) {
             WrapperMessage* wrapper_msg = new WrapperMessage;
             CrossShardRsp* rsp = wrapper_msg->mutable_crossshardrsp();

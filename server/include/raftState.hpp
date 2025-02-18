@@ -34,7 +34,7 @@ public:
     std::unordered_map<int, int> local_balance_tb_;
     std::unordered_map<int, bool> local_lock_;
 
-    RaftState();
+    RaftState(int cluster_id, int server_id);
     int lastlogindex();
     int lastlogterm();
     int prevlogindex(int idx);

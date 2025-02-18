@@ -7,7 +7,7 @@
 
 
 void IntraShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const IntraShardReq& req) {
-    if (raft_state->local_lock_[req.senderid()] || raft_state->local_lock_[req.receiverid()]) {
+    if (raft_state->local_lock_[req.senderid()] || raft_state->local_lock_[req.receiverid()] || raft_state->local_balance_tb_[req.senderid()] < req.amount()) {
         WrapperMessage* wrapper_msg = new WrapperMessage;
         IntraShardRsp* rsp = wrapper_msg->mutable_intrashardrsp();
         rsp->set_result(IntraShardResultType::FAIL);

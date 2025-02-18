@@ -16,6 +16,7 @@ if(BUILD_SERVER)
     pkg_check_modules(LIBURING REQUIRED liburing)
 
     add_definitions(-DCONFIG_PATH="${CMAKE_SOURCE_DIR}/config.json")
+    add_definitions(-DDATA_SHARD_BASE="${CMAKE_SOURCE_DIR}/data/")
 
     # Set proto files
     file(GLOB PROTO_FILES "${CMAKE_SOURCE_DIR}/proto/*.proto")
