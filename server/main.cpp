@@ -3,11 +3,16 @@
 #include <fcntl.h>
 #include <arpa/inet.h>
 
-
 #include "nlohmann/json.hpp"
 #include "aIOServer.hpp"
 #include "exit.pb.h"
 
+/**
+ * cmd - Only accept exit command to terminate servers.
+ * Send exit message to each server.
+ *
+ * @param server_ip_port_pairs ip and port pairs of servers
+ */
 void cmd(std::vector<std::vector<std::pair<std::string, int>>> server_ip_port_pairs) {
     char command[20];
     while (true) {
@@ -22,8 +27,8 @@ void cmd(std::vector<std::vector<std::pair<std::string, int>>> server_ip_port_pa
         if (std::strcmp(command, "exit") == 0) {
             // Send exit message to all servers
             for (int cluster_id = 0; cluster_id < server_ip_port_pairs.size(); cluster_id++) {
-                for (int index = 0; index < server_ip_port_pairs[cluster_id].size(); index++) {
-                    int server_id = cluster_id * server_ip_port_pairs[0].size() + index;
+                for (int index = 0; index < SERVER_NUM_PER_CLUSTER; index++) {
+                    int server_id = cluster_id * SERVER_NUM_PER_CLUSTER + index;
                     // Create socket
                     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
                     if (sockfd < 0) {
@@ -54,11 +59,7 @@ void cmd(std::vector<std::vector<std::pair<std::string, int>>> server_ip_port_pa
                     std::string msg_str;
                     wrapper_msg.SerializeToString(&msg_str);
 
-                    // Send message size first
-                    uint32_t msg_size = msg_str.size();
-                    send(sockfd, &msg_size, sizeof(msg_size), 0);
-
-                    // Then send the message
+                    // Send message
                     send(sockfd, msg_str.c_str(), msg_str.size(), 0);
 
                     close(sockfd);
@@ -106,7 +107,7 @@ int main(int argc, char* argv[]) {
     server_ip_port_pairs.resize(config["SERVERS"].size());
     for (size_t i = 0; i < config["SERVERS"].size(); i++) {
         server_ip_port_pairs[i].resize(config["SERVERS"][i].size());
-        for (size_t j = 0; j < config["SERVERS"][i].size(); j++) {
+        for (size_t j = 0; j < SERVER_NUM_PER_CLUSTER; j++) {
             server_ip_port_pairs[i][j] = {
                 config["SERVERS"][i][j]["IP"],
                 config["SERVERS"][i][j]["PORT"]
@@ -124,8 +125,8 @@ int main(int argc, char* argv[]) {
         // Update port numbers in _routing_service_ip_port_pair and _server_ip_port_pairs
         routing_service_ip_port_pair.second = routing_service_port;
         for (size_t i = 0; i < server_ip_port_pairs.size(); i++) {
-            for (size_t j = 0; j < server_ip_port_pairs[0].size(); j++) {
-                server_ip_port_pairs[i][j].second = server_base_port + i * server_ip_port_pairs[0].size() + j;
+            for (size_t j = 0; j < SERVER_NUM_PER_CLUSTER; j++) {
+                server_ip_port_pairs[i][j].second = server_base_port + i * SERVER_NUM_PER_CLUSTER + j;
             }
         }
     }
@@ -137,15 +138,15 @@ int main(int argc, char* argv[]) {
     // For each cluster
     for (int cluster_id = 0; cluster_id < server_ip_port_pairs.size(); cluster_id++) {
         // For each server in cluster
-        for (int index = 0; index < server_ip_port_pairs[cluster_id].size(); index++) {
-            int server_id = cluster_id * server_ip_port_pairs[0].size() + index;
+        for (int index = 0; index < SERVER_NUM_PER_CLUSTER; index++) {
+            int server_id = cluster_id * SERVER_NUM_PER_CLUSTER + index;
             pid_t pid = fork();
             if (pid == 0) {
-                // Child process - create and run server
+                // Child process: create and run server
                 AIOServer server(cluster_id, server_id, routing_service_ip_port_pair, server_ip_port_pairs, message_timeout_ms);
                 return 0;
             } else if (pid > 0) {
-                // Parent process - store child pid
+                // Parent process: store child pid
                 server_pids.push_back(pid);
             } else {
                 std::printf("[Error] Fork failed\n");
@@ -154,6 +155,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Wait for command from terminal
     cmd(server_ip_port_pairs);
 
     // Wait for all server processes to finish
