@@ -35,6 +35,16 @@ void AIOServer::broadcast_vote() {
     raft_state_->current_term_++;
     raft_state_->voted_for_ = server_id_;
     raft_state_->vote_granted_num_ = 1;
+
+    WrapperMessage* wrapper_msg = new WrapperMessage;
+    RequestVoteReq* req = wrapper_msg->mutable_requestvotereq();
+    req->set_candidateid(server_id_);
+    req->set_term(raft_state_->current_term_);
+    req->set_lastlogindex(raft_state_->lastlogindex());
+    req->set_lastlogterm(raft_state_->lastlogterm());
+
+    aio_->add_connect_request(routing_service_ip_port_pair_.first, routing_service_ip_port_pair_.second, wrapper_msg, AIOMessageType::WAIT_RESPONSE);
+
     for (int idx = 0; idx < SERVER_NUM_PER_CLUSTER; idx++) {
         if (idx == server_id_ % SERVER_NUM_PER_CLUSTER) {
             continue;
@@ -51,6 +61,14 @@ void AIOServer::broadcast_vote() {
 }
 
 void AIOServer::broadcast_heart_beat() {
+    WrapperMessage* wrapper_msg = new WrapperMessage;
+    AppendEntriesReq* req = wrapper_msg->mutable_appendentriesreq();
+    req->set_term(raft_state_->current_term_);
+    req->set_leaderid(server_id_);
+
+    aio_->add_connect_request(routing_service_ip_port_pair_.first, routing_service_ip_port_pair_.second, wrapper_msg, AIOMessageType::WAIT_RESPONSE);
+
+    raft_state_->coming_commit_index_ = raft_state_->log_.size() - 1;
     for (int idx = 0; idx < SERVER_NUM_PER_CLUSTER; idx++) {
         if (idx == server_id_ % SERVER_NUM_PER_CLUSTER) {
             continue;
@@ -68,7 +86,6 @@ void AIOServer::broadcast_heart_beat() {
             entry->set_command(raft_state_->log_[log_idx].command);
             entry->set_id(raft_state_->log_[log_idx].id);
         }
-        raft_state_->coming_commit_index_ = raft_state_->log_.size() - 1;
         req->set_commitindex(raft_state_->commit_index_);
         req->set_serverid(server_id_ / SERVER_NUM_PER_CLUSTER * SERVER_NUM_PER_CLUSTER + idx);
 
