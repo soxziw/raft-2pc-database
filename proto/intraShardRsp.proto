@@ -1,11 +1,11 @@
 syntax = "proto3";
 
 enum IntraShardResultType {
-  SUCCESS = 0;
-  FAIL = 1;
+  SUCCESS = 0; // Transaction success
+  FAIL = 1; // Transaction fail, only fail on data confliction or not enough balance
 }
 
 message IntraShardRsp {
-  IntraShardResultType result = 1;
-  int32 id = 2;
+  IntraShardResultType result = 1; // Result of transaction
+  int32 id = 2; // Unique id of transaction
 }

@@ -1,17 +1,17 @@
 syntax = "proto3";
 
 enum CrossShardPhaseType {
-  PREPARE = 0;
-  COMMIT = 1;
-  ABORT = 2;
+  PREPARE = 0; // First phase
+  COMMIT = 1; // Second phase
+  ABORT = 2; // Second phase
 }
 
 message CrossShardReq {
-  CrossShardPhaseType phase = 1;
-  int32 senderClusterId = 2;
-  int32 receiverClusterId = 3;
-  int32 senderId = 4;
-  int32 receiverId = 5;
-  int32 amount = 6;
-  int32 id = 7;
+  CrossShardPhaseType phase = 1; // Phase of request
+  int32 senderClusterId = 2; // Cluster that contains sender data item
+  int32 receiverClusterId = 3; // Cluster that contains receiver data item
+  int32 senderId = 4; // Sender data item
+  int32 receiverId = 5; // Receiver data item
+  int32 amount = 6; // Amount of transaction
+  int32 id = 7; // Unique id of transaction
 }

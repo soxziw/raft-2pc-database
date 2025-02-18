@@ -1,131 +1,109 @@
-#include <chrono>
+#include <liburing.h>
+#include <memory>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 #include "asyncIO.hpp"
+#include "util.hpp"
 
-
-AsyncIO::AsyncIO(int message_timeout_ms) : keep_running_(true), message_timeout_ms_(message_timeout_ms) {
-    // Initialize io_uring
+AsyncIO::AsyncIO(int message_timeout_ms) : message_timeout_ms_(message_timeout_ms) {
     struct io_uring_params params;
     memset(&params, 0, sizeof(params));
     if (io_uring_queue_init_params(32, &ring_, &params) < 0) {
-        throw std::runtime_error("Failed to initialize io_uring");
+        fatal_error("Init io_uring error.");
     }
+};
 
-    // Create master thread
-    pthread_create(&master_thread_, nullptr, [](void* arg) -> void* {
-        AsyncIO* async_io = static_cast<AsyncIO*>(arg);
-        async_io->masterThreadFunc();
-        return nullptr;
-    }, this);
-
-    // Create worker threads
-    for (int i = 0; i < num_workers_; ++i) {
-        pthread_t worker_thread;
-        pthread_create(&worker_thread, nullptr, [](void* arg) -> void* {
-            AsyncIO* async_io = static_cast<AsyncIO*>(arg);
-            async_io->workerThreadFunc();
-            return nullptr;
-        }, this);
-        worker_threads_.push_back(worker_thread);
-    }
+void AsyncIO::set_nonblocking(int sockfd) {
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
 }
 
-AsyncIO::~AsyncIO() {
-    keep_running_ = false;
-    cond_var_.notify_all();
-    
-    // Join master thread
-    pthread_join(master_thread_, nullptr);
-
-    // Join worker threads
-    for (auto& worker : worker_threads_) {
-        pthread_join(worker, nullptr);
-    }
-    
-    io_uring_queue_exit(&ring_);
+void AsyncIO::set_timer(struct io_uring_sqe* sqe) {
+    // Set timeout
+    struct __kernel_timespec ts;
+    ts.tv_sec = 0;
+    ts.tv_nsec = message_timeout_ms_ * 1000000; // 30ms in nanoseconds
+    io_uring_prep_timeout(sqe, &ts, 0, 0);
 }
 
-void AsyncIO::async_read(int fd, std::function<void(const WrapperMessage&)> callback) {
+void AsyncIO::add_timeout(int message_timeout_ms) {
+    AIOData* data = new AIOData{0, AIOEventType::EVENT_TIMEOUT, nullptr, 0, AIOMessageType::NONE};
+    struct io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
+    struct __kernel_timespec ts;
+    ts.tv_sec = 0;
+    ts.tv_nsec = message_timeout_ms * 1000000;
+    io_uring_prep_timeout(sqe, &ts, 0, 0);
+    io_uring_sqe_set_data(sqe, data);
+
+    io_uring_submit(&ring_);
+}
+
+void AsyncIO::add_accept_request(int server_socket) {
+    AIOData* data = new AIOData{server_socket, AIOEventType::EVENT_ACCEPT, nullptr, 0, AIOMessageType::NONE};
+    struct io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
+    io_uring_prep_accept(sqe, server_socket, nullptr, nullptr, 0);
+    io_uring_sqe_set_data(sqe, data);
+    io_uring_submit(&ring_);
+}
+
+void AsyncIO::add_connect_request(const std::string& ip, int port, WrapperMessage* wrapper_msg, AIOMessageType msg_type) {
+    int client_socket;
+    struct sockaddr_in clt_addr;
+
+    client_socket = socket(PF_INET, SOCK_STREAM, 0);
+    set_nonblocking(client_socket);
+
+    memset(&clt_addr, 0, sizeof(clt_addr));
+    clt_addr.sin_family = AF_INET;
+    clt_addr.sin_port = htons(port);
+    inet_pton(AF_INET, ip.c_str(), &clt_addr.sin_addr);
+
+    char* buf;
+    int buf_size;
+    serialize_msg_to_buf(wrapper_msg, buf, buf_size);
+
+    AIOData* data = new AIOData{client_socket, AIOEventType::EVENT_CONNECT, buf, buf_size, msg_type};
+
+    struct io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
+    io_uring_prep_connect(sqe, client_socket, (struct sockaddr *)&clt_addr, sizeof(clt_addr));
+    io_uring_sqe_set_data(sqe, data);
+    io_uring_submit(&ring_);
+}
+
+void AsyncIO::add_read_request(int client_socket) {
+    set_nonblocking(client_socket);
+
     char* buf = new char[1024];
-    IOData* read_data = new IOData{fd, buf, [this, callback, buf, read_data]() {
-        WrapperMessage wrapper_msg;
-        if (wrapper_msg.ParseFromArray(buf, 1024)) {
-            callback(wrapper_msg);
-        }
-        delete[] buf;
-        delete read_data;
-    }};
 
+    AIOData* data = new AIOData{client_socket, AIOEventType::EVENT_READ, buf, 1024, AIOMessageType::NONE};
     struct io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
-    io_uring_prep_read(sqe, fd, buf, 1024, 0);
-    io_uring_sqe_set_data(sqe, read_data);
-    
-    // Set 30ms timeout
-    struct __kernel_timespec ts;
-    ts.tv_sec = 0;
-    ts.tv_nsec = message_timeout_ms_ * 1000000; // 30ms in nanoseconds
-    io_uring_prep_timeout(sqe, &ts, 0, 0);
-    
-    io_uring_submit(&ring_);
-}
-
-void AsyncIO::async_write(int fd, const WrapperMessage& wrapper_msg, std::function<void()> callback) {
-    std::string serialized;
-    wrapper_msg.SerializeToString(&serialized);
-    
-    char* buf = new char[serialized.size()];
-    memcpy(buf, serialized.data(), serialized.size());
-    
-    IOData* write_data = new IOData{fd, buf, [this, callback, buf, write_data, fd]() {
-        callback();
-        close(fd);
-        delete[] buf;
-        delete write_data;
-    }};
-
-    struct io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
-    io_uring_prep_write(sqe, fd, buf, serialized.size(), 0);
-    io_uring_sqe_set_data(sqe, write_data);
-    
-    // Set 30ms timeout
-    struct __kernel_timespec ts;
-    ts.tv_sec = 0;
-    ts.tv_nsec = message_timeout_ms_ * 1000000; // 30ms in nanoseconds
-    io_uring_prep_timeout(sqe, &ts, 0, 0);
+    io_uring_prep_read(sqe, client_socket, buf, 1024, 0);
+    io_uring_sqe_set_data(sqe, data);
+    set_timer(sqe);
 
     io_uring_submit(&ring_);
 }
 
-void AsyncIO::masterThreadFunc() {
-    while (keep_running_) {
-        struct io_uring_cqe* cqe;
-        int ret = io_uring_wait_cqe(&ring_, &cqe);
-        if (ret < 0) continue;
+void AsyncIO::_add_write_request_buf(int client_socket, char* buf, int buf_size, AIOMessageType msg_type) {
+    set_nonblocking(client_socket);
 
-        IOData* completed_data = (IOData*)io_uring_cqe_get_data(cqe);
-        int res = cqe->res;
-        io_uring_cqe_seen(&ring_, cqe);
-        if (completed_data && completed_data->callback) {
-            std::unique_lock<std::mutex> lock(mutex_);
-            task_queue_.emplace([completed_data]() {
-                completed_data->callback();
-            });
-            cond_var_.notify_one();
-        }
-    }
+    AIOData* data = new AIOData{client_socket, AIOEventType::EVENT_WRITE, buf, buf_size, msg_type};
+
+
+    struct io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
+    io_uring_prep_write(sqe, client_socket, buf, buf_size, 0);
+    io_uring_sqe_set_data(sqe, data);
+    set_timer(sqe);
+
+    io_uring_submit(&ring_);
 }
 
-void AsyncIO::workerThreadFunc() {
-    while (keep_running_) {
-        std::function<void()> task;
-        {
-            std::unique_lock<std::mutex> lock(mutex_);
-            cond_var_.wait(lock, [this]() {
-                return !task_queue_.empty() || !keep_running_;
-            });
-            if (!keep_running_) break;
-            task = std::move(task_queue_.front());
-            task_queue_.pop();
-        }
-        task();
-    }
+void AsyncIO::add_write_request_msg(int client_socket, WrapperMessage* wrapper_msg, AIOMessageType msg_type) {
+    char* buf;
+    int buf_size;
+    serialize_msg_to_buf(wrapper_msg, buf, buf_size);
+
+    _add_write_request_buf(client_socket, buf, buf_size, msg_type);
 }

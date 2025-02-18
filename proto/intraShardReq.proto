@@ -1,9 +1,9 @@
 syntax = "proto3";
 
 message IntraShardReq {
-  int32 clusterId = 1;
-  int32 senderId = 2;
-  int32 receiverId = 3;
-  int32 amount = 4;
-  int32 id = 5;
+  int32 clusterId = 1; // Cluster that contains sender and receiver data items
+  int32 senderId = 2; // Sender data item
+  int32 receiverId = 3; // Receiver data item
+  int32 amount = 4; // Amount of transaction
+  int32 id = 5; // Unique id of transaction
 }

@@ -4,6 +4,7 @@ message Entry {
   int32 term = 1;   // Term when entry was received by leader
   int32 index = 2;   // Position of entry in the log
   string command = 3; // Command for state machine
+  int32 id = 4; // Transaction id
 }
 
 message AppendEntriesReq {
@@ -13,4 +14,5 @@ message AppendEntriesReq {
   int32 prevLogTerm = 4; // Term of prevLogIndex entry
   repeated Entry entries = 5; // Log entries to store (empty for heartbeat)
   int32 commitIndex = 6; // Last entry known to be committed
+  int32 serverId = 7; // Receiver of this request
 }

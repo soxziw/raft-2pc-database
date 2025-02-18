@@ -1,6 +1,6 @@
 syntax = "proto3";
 
 message PrintDatastoreReq {
-  int32 clusterId = 1;
-  int32 serverId = 2;
+  int32 clusterId = 1; // Cluster that server belong to
+  int32 serverId = 2; // Server's id
 }
