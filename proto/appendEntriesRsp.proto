@@ -3,5 +3,5 @@ syntax = "proto3";
 message AppendEntriesRsp {
   int32 term = 1; // CurrentTerm, for leader to update itself
   bool success = 2; // True if follower contained entry matching prevLogIndex and prevLogTerm
-  int32 serverId = 3;
+  int32 serverId = 3; // Sender of this response
 }

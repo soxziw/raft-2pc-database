@@ -1,12 +1,12 @@
 syntax = "proto3";
 
 enum CrossShardResultType {
-  YES = 0; // Prepare phase
-  NO = 1; // Prepare phase
-  ACK = 2; // Commit/Abort phase
+  YES = 0; // First(Prepare) phase
+  NO = 1; // First(Prepare) phase
+  ACK = 2; // Second(Commit/Abort) phase
 }
 
 message CrossShardRsp {
-  CrossShardResultType result = 1;
-  int32 id = 2;
+  CrossShardResultType result = 1; // Result of transaction
+  int32 id = 2; // Unique id of transaction
 }

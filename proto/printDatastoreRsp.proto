@@ -3,7 +3,7 @@ syntax = "proto3";
 import "appendEntriesReq.proto";
 
 message PrintDatastoreRsp {
-  int32 clusterId = 1;
-  int32 serverId = 2;
-  repeated Entry entries = 3;
+  int32 clusterId = 1; // Cluster that server belong to
+  int32 serverId = 2; // Server's id
+  repeated Entry entries = 3; // Log entries on local server
 }
