@@ -72,7 +72,7 @@ void AppendEntriesExecutor::executeRsp(int client_socket, std::shared_ptr<AsyncI
         if (rsp.term() == raft_state->current_term_) {
             if (rsp.success()) {
                 raft_state->log_granted_num_++;
-                if (raft_state->log_granted_num_ >= 2) {
+                if (raft_state->log_granted_num_ >= 2 && raft_state->log_[raft_state->coming_commit_index_].term == raft_state->current_term_) {
                     for (int idx = raft_state->commit_index_ + 1; idx <= raft_state->coming_commit_index_; idx++) {
                         if (raft_state->log_[idx].req_fd != -1) {
                             if (raft_state->log_[idx].command[0] == '[') {
