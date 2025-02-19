@@ -15,6 +15,11 @@ void IntraShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> 
         aio->add_write_request_msg(client_socket, wrapper_msg, AIOMessageType::NO_RESPONSE);
         return;
     }
+    for (const auto& entry : raft_state->log_) {
+        if (entry.id == req.id()) {
+            return;
+        }
+    }
     raft_state->log_.push_back(
         LogEntry {
             raft_state->current_term_,

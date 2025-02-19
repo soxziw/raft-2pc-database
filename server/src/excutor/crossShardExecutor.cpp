@@ -17,6 +17,11 @@ void CrossShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> 
             aio->add_write_request_msg(client_socket, wrapper_msg, AIOMessageType::NO_RESPONSE);
             return;
         }
+        for (const auto& entry : raft_state->log_) {
+            if (entry.id == req.id() && entry.command.substr(0, 9) == "[PREPARE]") {
+                return;
+            }
+        }
         raft_state->log_.push_back(
             LogEntry {
                 raft_state->current_term_,
@@ -33,6 +38,11 @@ void CrossShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> 
             raft_state->local_lock_[req.receiverid()] = true;
         }
     } else if (req.phase() == CrossShardPhaseType::COMMIT) {
+        for (const auto& entry : raft_state->log_) {
+            if (entry.id == req.id() && entry.command.substr(0, 8) == "[COMMIT]") {
+                return;
+            }
+        }
         raft_state->log_.push_back(
             LogEntry {
                 raft_state->current_term_,
