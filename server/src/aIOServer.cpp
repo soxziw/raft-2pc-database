@@ -145,12 +145,16 @@ void AIOServer::run(int server_socket) {
                     if (!raft_state_->heard_heart_beat_) {
                         raft_state_->role_ = Role::CANDIDATE;
                         raft_state_->current_term_++;
+                        raft_state_->voted_for_ = server_id_;
+                        raft_state_->vote_granted_num_ = 1;
                         broadcast_vote();
                     }
                     raft_state_->heard_heart_beat_ = false;
                     aio_->add_timeout(200);
                 } else if (raft_state_->role_ == Role::CANDIDATE) {
                     raft_state_->current_term_++;
+                    raft_state_->voted_for_ = server_id_;
+                    raft_state_->vote_granted_num_ = 1;
                     broadcast_vote();
                     aio_->add_timeout(200);
                 } else {
