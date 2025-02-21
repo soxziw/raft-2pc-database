@@ -68,8 +68,8 @@ class TransactionHandler:
         cluster_id = LocalConfig.get_cluster_id_for_user(user_id)
         balance_res = []
         for i in range(LocalConfig.num_server_per_cluster):
-            ip, port =  LocalConfig.server_ip_port_list[cluster_id - 1][i]
-            server_id = LocalConfig.num_server_per_cluster * (cluster_id - 1) + i + 1
+            ip, port =  LocalConfig.server_ip_port_list[cluster_id][i]
+            server_id = LocalConfig.num_server_per_cluster * cluster_id + i
             message = printBalanceReqSerializer.to_str(clusterId=cluster_id,serverId=server_id , dataItemID=user_id)
             response = utils.send_message(ip, port, message, with_response=True)
             print_balance_response = printBalanceRspSerializer.parse(response)
@@ -85,8 +85,8 @@ class TransactionHandler:
         for i in range(LocalConfig.num_cluster):
             for j in range(LocalConfig.num_server_per_cluster):
                 ip, port = LocalConfig.server_ip_port_list[i][j]
-                cluster_id = i + 1
-                server_id = LocalConfig.server_index_to_id(i + 1, j)
+                cluster_id = i
+                server_id = LocalConfig.server_index_to_id(i, j)
                 message = printDatastoreReqSerializer.to_str(cluster_id, server_id)
                 response = utils.send_message(ip, port, message, with_response=True)
                 print_datastore_response = printDatastoreRspSerializer.parse(response)
@@ -100,7 +100,7 @@ class TransactionHandler:
         cluster_id = LocalConfig.get_cluster_id_for_server(server_id)
         message = StopSerializer.to_str(cluster_id, server_id)
         server_index = LocalConfig.server_id_to_index(server_id)
-        ip, port = LocalConfig.server_ip_port_list[cluster_id - 1][server_index]
+        ip, port = LocalConfig.server_ip_port_list[cluster_id][server_index]
         utils.send_message(ip, port, message, with_response=False)
         print(f"Server {server_id} stops SUCCEED")
         
@@ -111,7 +111,7 @@ class TransactionHandler:
         cluster_id = LocalConfig.get_cluster_id_for_server(server_id)
         message = ResumeSerializer.to_str(cluster_id, server_id)
         server_index = LocalConfig.server_id_to_index(server_id)
-        ip, port = LocalConfig.server_ip_port_list[cluster_id - 1][server_index]
+        ip, port = LocalConfig.server_ip_port_list[cluster_id][server_index]
         utils.send_message(ip, port, message, with_response=False)
         print(f"Server {server_id} resumes SUCCEED")
 

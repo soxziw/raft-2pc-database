@@ -5,6 +5,7 @@ import utils
 import re, os, sys
 from handler import TransactionHandler
 from routingservice import RoutingService
+import asyncio
 
 
 with open('../config.json') as f:
@@ -128,15 +129,15 @@ class Client:
         pass
 
     def stop(self, server_id):
-        if server_id not in range(1, 10):
-            print('Invalid stop command: server id must be integers from 1 to 9')
+        if server_id not in range(0, 9):
+            print('Invalid stop command: server id must be integers from 0 to 8')
             return
         print(f"Stoping server {server_id}...")
         TransactionHandler.stop(server_id)
     
     def resume(self, server_id):
-        if server_id not in range(1, 10):
-            print('Invalid resume command: server id must be integers from 1 to 9')
+        if server_id not in range(0, 9):
+            print('Invalid resume command: server id must be integers from 0 to 8')
             return
         print(f"Resuming server {server_id}...")
         TransactionHandler.resume(server_id)
@@ -145,7 +146,7 @@ if __name__ == "__main__":
         
         client = Client()
         # start the routing service
-        client.routing_service.start()
+        asyncio.run(client.routing_service.server_thread())
 
         # start user interaction
         client.prompt()
