@@ -1,15 +1,11 @@
 
 import time
-import json, threading
 import utils
-import re, os, sys
+import re, os
 from handler import TransactionHandler
 from routingservice import RoutingService
 import asyncio
-
-
-with open('../config.json') as f:
-    CONFIG = json.load(f)
+from config import LocalConfig
 
 
 class Client:
@@ -17,7 +13,8 @@ class Client:
     def __init__(self):
         # self.client_id = client_id
         self.create_time = utils.get_current_time()
-        self.routing_service = RoutingService(CONFIG['ROUTING_SERVICE']['IP'],int(CONFIG['ROUTING_SERVICE']['PORT']))
+        ip, port = LocalConfig.routing_service_ip_port
+        self.routing_service = RoutingService(ip,port)
     
 
     def __repr__(self):
@@ -126,7 +123,38 @@ class Client:
 
     def print_performance_metrics(self):
         """Prints throughput and latency from the time the client initiates a transaction to the time the client process receives a reply message."""
-        pass
+        
+        print(f"Calculating latency and throughput from all previous intra-shard transactions...")
+        print('-'*30)
+        total_latency = 0
+        total_throughtput = 0
+        for metric in self.routing_service.latency_for_intra:
+            total_latency += metric.latency
+            total_throughtput += metric.throughput_bps
+
+        avg_latency = total_latency // len(self.routing_service.latency_for_intra)
+        avg_throughpput = total_throughtput // len(self.routing_service.latency_for_intra)
+        print(f"Average latency of intra-shard transaction is : {avg_latency:.3f}ms")
+        print(f"Average throughput of intra-shard transaction is : {avg_throughpput / 1e6:.3f} Mbps")
+        print('-'*30)
+
+        print(f"Calculating latency and throughput from all previous cross-shard transactions...")
+        print('-'*30)
+        total_latency = 0
+        total_throughtput = 0
+        for metric in self.routing_service.latency_for_cross:
+            total_latency += metric.latency
+            total_throughtput += metric.throughput_bps
+
+        avg_latency = total_latency // len(self.routing_service.latency_for_cross)
+        avg_throughpput = total_throughtput // len(self.routing_service.latency_for_cross)
+        print(f"Average latency of cross-shard transaction is : {avg_latency:.3f}ms")
+        print(f"Average throughput of cross-shard transaction is : {avg_throughpput / 1e6:.3f} Mbps")
+        print('-'*30)
+
+
+
+
 
     def stop(self, server_id):
         if server_id not in range(0, 9):
@@ -142,11 +170,13 @@ class Client:
         print(f"Resuming server {server_id}...")
         TransactionHandler.resume(server_id)
 
+
+
 if __name__ == "__main__":
         
         client = Client()
         # start the routing service
-        asyncio.run(client.routing_service.server_thread())
+        client.routing_service.start()
 
         # start user interaction
         client.prompt()

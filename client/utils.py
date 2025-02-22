@@ -1,9 +1,7 @@
-import socket, json
+import socket
+import asyncio
 from datetime import datetime
-from enum import Enum
-
-import os, sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
+from config  import LocalConfig
 
 
 HANDLE_REQUEST_TIME_DELAY = 3
@@ -13,11 +11,7 @@ DEFAULT_BALANCE = 10.0
 JOB_INTERVAL = 0.1
 
 
-with open('../config.json') as f:
-    CONFIG = json.load(f)
-    
-
-class CrossShardPhaseType(Enum):
+class CrossShardPhaseType:
   PREPARE = 0
   COMMIT = 1 
   ABORT = 2
@@ -33,19 +27,16 @@ def send_message(hostname: str, port: int, message: bytes, with_response=True) -
     try:
         print(f"sending {message} to {hostname}:{port}...")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(CONFIG['MESSAGE_TIMEOUT_MS'])
+            s.settimeout(LocalConfig.message_timeout_ms)
             s.connect((hostname, port))
             s.setblocking(False)
             s.send(message)
-            #s.settimeout(CONFIG['MESSAGE_TIMEOUT_MS'])
             if with_response:
                 response = s.recv(BUFFER_SIZE)
     except socket.timeout:
         raise TimeoutError("socket timeout")
     return response
     
-
-import asyncio
 
 
 async def send_message_async(hostname: str, port: int, message: bytes, with_response=True) -> bytes:
@@ -61,7 +52,7 @@ async def send_message_async(hostname: str, port: int, message: bytes, with_resp
 
         if with_response:
             try:
-                response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=CONFIG['MESSAGE_TIMEOUT_MS'])
+                response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=LocalConfig.message_timeout_ms)
             except asyncio.TimeoutError:
                 raise TimeoutError("Socket timeout while receiving response")
 

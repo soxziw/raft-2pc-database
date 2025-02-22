@@ -1,3 +1,6 @@
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
+
 import utils
 from serializers.IntraShardReq import IntraShardReqSerializer
 from serializers.CrossShardReq import CrossShardReqSerializer
@@ -8,8 +11,6 @@ from serializers.printDatastoreRsp import printDatastoreRspSerializer
 from serializers.Stop import StopSerializer
 from serializers.Resume import ResumeSerializer
 import os, sys
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 from config import LocalConfig
 
 
@@ -114,7 +115,3 @@ class TransactionHandler:
         ip, port = LocalConfig.server_ip_port_list[cluster_id][server_index]
         utils.send_message(ip, port, message, with_response=False)
         print(f"Server {server_id} resumes SUCCEED")
-
-    @classmethod
-    def get_performance_metrics(cls):
-        pass
