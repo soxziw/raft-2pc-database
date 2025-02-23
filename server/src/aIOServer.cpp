@@ -130,7 +130,7 @@ int AIOServer::setup_listening_socket(int port) {
 
 void AIOServer::run(int server_socket) {
     aio_->add_accept_request(server_socket);
-    aio_->add_timeout(200);
+    aio_->add_timeout_request(200);
     while (keep_running_) {
         struct io_uring_cqe* cqe;
         int ret = io_uring_wait_cqe(&(aio_->ring_), &cqe);
@@ -150,16 +150,16 @@ void AIOServer::run(int server_socket) {
                         broadcast_vote();
                     }
                     raft_state_->heard_heart_beat_ = false;
-                    aio_->add_timeout(200);
+                    aio_->add_timeout_request(200);
                 } else if (raft_state_->role_ == Role::CANDIDATE) {
                     raft_state_->current_term_++;
                     raft_state_->voted_for_ = server_id_;
                     raft_state_->vote_granted_num_ = 1;
                     broadcast_vote();
-                    aio_->add_timeout(200);
+                    aio_->add_timeout_request(200);
                 } else {
                     broadcast_heart_beat();
-                    aio_->add_timeout(50);
+                    aio_->add_timeout_request(50);
                 }
                 delete data;
                 break;
