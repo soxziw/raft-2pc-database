@@ -6,6 +6,7 @@
 #include <fmt/format.h>
 #include <string>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "nlohmann/json.hpp"
 #include "util.hpp"
@@ -16,6 +17,7 @@ void fatal_error(const std::string& str) {
 }
 
 void load_data_shard(std::shared_ptr<RaftState> raft_state) {
+    std::printf("(%d)[%d:%d] Load data shard.\n", getpid(), raft_state->cluster_id_, raft_state->server_id_);
     // Open data shard file with read only permission
     std::filesystem::path file_path = std::filesystem::path(DATA_SHARD_BASE) / ("dataShard" + std::to_string(raft_state->cluster_id_) + ".nlohmann::jsonl");
     int fd = open(file_path.c_str(), O_RDONLY);
@@ -65,6 +67,7 @@ void load_data_shard(std::shared_ptr<RaftState> raft_state) {
 }
 
 void update_data_shard(std::shared_ptr<RaftState> raft_state) {
+    std::printf("(%d)[%d:%d] Update data shard.\n", getpid(), raft_state->cluster_id_, raft_state->server_id_);
     // Open data shard file with read only permission
     std::filesystem::path file_path = std::filesystem::path(DATA_SHARD_BASE) / ("dataShard" + std::to_string(raft_state->cluster_id_) + ".nlohmann::jsonl");
     int fd = open(file_path.c_str(), O_RDWR);

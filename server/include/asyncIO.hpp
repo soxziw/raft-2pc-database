@@ -72,24 +72,24 @@ public:
     /**
      * add_accept_request - Add accept event waiting for connecting from other server or client.
      *
-     * @param server_socket Accept socket
+     * @param server_socket accept socket
      */
     void add_accept_request(int server_socket);
 
     /**
      * add_connect_request - Add connect event waiting for accepting from target server or client.
      *
-     * @param ip Target ip
-     * @param port Target port
-     * @param wrapper_msg Protobuf message to send
-     * @param msg_type Type of message
+     * @param ip target ip
+     * @param port target port
+     * @param wrapper_msg protobuf message to send
+     * @param msg_type type of message
      */
     void add_connect_request(const std::string& ip, int port, WrapperMessage* wrapper_msg, AIOMessageType msg_type);
 
     /**
      * add_read_request - Add read event waiting for writing from client.
      *
-     * @param client_socket Client socket
+     * @param client_socket client socket
      */
     void add_read_request(int client_socket);
 
@@ -97,22 +97,22 @@ public:
      * _add_write_request_buf - Add write event to client, message stored in buffer.
      * Internal function only used for write after connecting, or write after message parsing.
      *
-     * @param client_socket Client socket to write to
-     * @param buf Buffer containing message
-     * @param buf_size Size of buffer
-     * @param msg_type Type of message
+     * @param client_socket client socket to write to
+     * @param buf buffer containing message
+     * @param buf_size size of buffer
+     * @param msg_type type of message
      */
     void _add_write_request_buf(int client_socket, char* buf, int buf_size, AIOMessageType msg_type);
 
     /**
      * add_write_request_msg - Add write event to client, message stored in protobuf.
      *
-     * @param client_socket Client socket to write to
-     * @param wrapper_msg Protobuf message
-     * @param msg_type Type of message
+     * @param client_socket client socket to write to
+     * @param wrapper_msg protobuf message
+     * @param msg_type type of message
      */
     void add_write_request_msg(int client_socket, WrapperMessage* wrapper_msg, AIOMessageType msg_type);
 
     struct io_uring ring_; // io_uring object
-    int message_timeout_ms_; // Timeout for reading and writing
+    int message_timeout_ms_; // timeout for reading and writing
 };
