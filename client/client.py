@@ -1,14 +1,11 @@
 
 import time
-import json, threading
 import utils
-import re, os, sys
+import re, os
 from handler import TransactionHandler
 from routingservice import RoutingService
-
-
-with open('../config.json') as f:
-    CONFIG = json.load(f)
+import asyncio
+from config import LocalConfig
 
 
 class Client:
@@ -16,7 +13,8 @@ class Client:
     def __init__(self):
         # self.client_id = client_id
         self.create_time = utils.get_current_time()
-        self.routing_service = RoutingService(CONFIG['ROUTING_SERVICE']['IP'],int(CONFIG['ROUTING_SERVICE']['PORT']))
+        ip, port = LocalConfig.routing_service_ip_port
+        self.routing_service = RoutingService(ip,port)
     
 
     def __repr__(self):
@@ -31,16 +29,16 @@ class Client:
             if re.match(r'(exit|quit|q)$', cmd):
                 print('Exiting...')
                 os._exit(0)
-            elif re.match(r'^(transfer|t)\s+\d+\s+\d+(\.\d+)?$', cmd):
+            elif re.match(r'^(transfer|t)\s+\d+\s+\d+\s+\d+(\.\d+)?$', cmd):
                 try:
                     sender, recipient, amount = cmd.split()[1:]
                 except ValueError:
                     print('Invalid transfer command')
                     continue
                 self.transfer(int(sender), int(recipient), int(amount))
-            elif re.match(r'(balance|bal|b)$', cmd):
+            elif re.match(r'balance|bal|b', cmd):
                 try:
-                    user = cmd.split()[1:]
+                    user = cmd.split()[1]
                 except ValueError:
                     print('Invalid balance command')
                     continue
@@ -51,14 +49,14 @@ class Client:
                 self.print_performance_metrics()
             elif re.match(r'stop|s', cmd):
                 try:
-                    server_id = cmd.split()[1:]
+                    server_id = cmd.split()[1]
                 except ValueError:
                     print('Invalid balance command')
                     continue
                 self.stop(int(server_id))
             elif re.match(r'resume|r', cmd):
                 try:
-                    server_id = cmd.split()[1:]
+                    server_id = cmd.split()[1]
                 except ValueError:
                     print('Invalid balance command')
                     continue
@@ -91,7 +89,7 @@ class Client:
         if sender_id not in range(1, 3001) or recipient_id not in range(1, 3001):
             print('Invalid transfer command: sender and receiver must be integers from 1 to 3000')
             return
-        if amount < 0 or type(amount) is not type(int):
+        if amount < 0 or not isinstance(amount, int):
             print("Invalid transfer command: Amount must be positive integer")
             return
         
@@ -125,27 +123,63 @@ class Client:
 
     def print_performance_metrics(self):
         """Prints throughput and latency from the time the client initiates a transaction to the time the client process receives a reply message."""
-        pass
+        
+        print(f"Calculating latency and throughput from all previous intra-shard transactions...")
+        print('-'*30)
+        total_latency = 0
+        total_throughtput = 0
+        for metric in self.routing_service.latency_for_intra:
+            total_latency += metric.latency
+            total_throughtput += metric.throughput_bps
+
+        avg_latency = total_latency // len(self.routing_service.latency_for_intra)
+        avg_throughpput = total_throughtput // len(self.routing_service.latency_for_intra)
+        print(f"Average latency of intra-shard transaction is : {avg_latency:.3f}ms")
+        print(f"Average throughput of intra-shard transaction is : {avg_throughpput / 1e6:.3f} Mbps")
+        print('-'*30)
+
+        print(f"Calculating latency and throughput from all previous cross-shard transactions...")
+        print('-'*30)
+        total_latency = 0
+        total_throughtput = 0
+        for metric in self.routing_service.latency_for_cross:
+            total_latency += metric.latency
+            total_throughtput += metric.throughput_bps
+
+        avg_latency = total_latency // len(self.routing_service.latency_for_cross)
+        avg_throughpput = total_throughtput // len(self.routing_service.latency_for_cross)
+        print(f"Average latency of cross-shard transaction is : {avg_latency:.3f}ms")
+        print(f"Average throughput of cross-shard transaction is : {avg_throughpput / 1e6:.3f} Mbps")
+        print('-'*30)
+
+
+
+
 
     def stop(self, server_id):
-        if server_id not in range(1, 10):
-            print('Invalid stop command: server id must be integers from 1 to 9')
+        if server_id not in range(0, 9):
+            print('Invalid stop command: server id must be integers from 0 to 8')
             return
         print(f"Stoping server {server_id}...")
         TransactionHandler.stop(server_id)
     
     def resume(self, server_id):
-        if server_id not in range(1, 10):
-            print('Invalid resume command: server id must be integers from 1 to 9')
+        if server_id not in range(0, 9):
+            print('Invalid resume command: server id must be integers from 0 to 8')
             return
         print(f"Resuming server {server_id}...")
         TransactionHandler.resume(server_id)
 
+
+
 if __name__ == "__main__":
         
         client = Client()
+
         # start the routing service
         client.routing_service.start()
-
+        
         # start user interaction
         client.prompt()
+
+        
