@@ -34,7 +34,7 @@ void update_data_shard(std::shared_ptr<RaftState> raft_state);
  * @param buf pointer of char array buffer to fill.
  * @param buf_size size of content filled in the buffer.
  */
-void serialize_msg_to_buf(WrapperMessage* wrapper_msg, char* buf, int buf_size);
+void serialize_msg_to_buf(WrapperMessage*& wrapper_msg, char*& buf, int& buf_size);
 
 /**
  * parse_buf_to_msg - Parse char array buffer into protobuf message.
@@ -43,4 +43,4 @@ void serialize_msg_to_buf(WrapperMessage* wrapper_msg, char* buf, int buf_size);
  * @param buf pointer of char array buffer to extract.
  * @param buf_size size of content in the buffer.
  */
-void parse_buf_to_msg(WrapperMessage* wrapper_msg, char* buf, int buf_size);
+void parse_buf_to_msg(WrapperMessage*& wrapper_msg, char*& buf, int& buf_size);
