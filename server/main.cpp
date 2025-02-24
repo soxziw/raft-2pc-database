@@ -61,6 +61,7 @@ void cmd(std::vector<std::vector<std::pair<std::string, int>>> server_ip_port_pa
 
                     // Send message
                     send(sockfd, msg_str.c_str(), msg_str.size(), 0);
+                    std::printf("Send exit message to %d:%d\n", cluster_id, server_id);
 
                     close(sockfd);
                 }
@@ -148,6 +149,7 @@ int main(int argc, char* argv[]) {
             } else if (pid > 0) {
                 // Parent process: store child pid
                 server_pids.push_back(pid);
+                sleep(1);
             } else {
                 std::printf("[Error] Fork failed\n");
                 return 1;

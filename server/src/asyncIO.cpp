@@ -10,7 +10,6 @@
 
 AsyncIO::AsyncIO(int message_timeout_ms) : message_timeout_ms_(message_timeout_ms) {
     // Init
-    std::printf("(%d)[INIT] Init async I/O layer.\n", getpid());
     struct io_uring_params params;
     memset(&params, 0, sizeof(params));
     if (io_uring_queue_init_params(32, &ring_, &params) < 0) {
@@ -24,40 +23,43 @@ void AsyncIO::set_nonblocking(int sockfd) {
     fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
 }
 
-void AsyncIO::set_timer(struct io_uring_sqe* sqe) {
-    // Set timeout
-    struct __kernel_timespec ts;
-    ts.tv_sec = 0;
-    ts.tv_nsec = message_timeout_ms_ * 1000000; // In nanoseconds
-    io_uring_prep_timeout(sqe, &ts, 0, 0);
+void AsyncIO::set_timer(struct io_uring_sqe*& sqe) {
+    // // Set timeout
+    // struct __kernel_timespec ts;
+    // ts.tv_sec = 0;
+    // ts.tv_nsec = message_timeout_ms_ * 1000000; // In nanoseconds
+    // io_uring_prep_timeout(sqe, &ts, 0, 0);
 }
 
 void AsyncIO::add_timeout_request(int message_timeout_ms) {
-    std::printf("(%d)[Async] Add timeout request with %d ms.\n", getpid(), message_timeout_ms);
     // Generate timeout metadata
     AIOData* data = new AIOData{0, AIOEventType::EVENT_TIMEOUT, nullptr, 0, AIOMessageType::NONE};
     struct io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
     struct __kernel_timespec ts;
-    ts.tv_sec = 0;
-    ts.tv_nsec = message_timeout_ms * 1000000;
+    ts.tv_sec = message_timeout_ms / 1000;
+    ts.tv_nsec = (message_timeout_ms % 1000) * 1000000;
     io_uring_prep_timeout(sqe, &ts, 0, 0);
     io_uring_sqe_set_data(sqe, data);
 
-    io_uring_submit(&ring_);
+    int ret = io_uring_submit(&ring_);
+    if (ret < 0) {
+        fatal_error("Failed to submit io_uring request.");
+    }
 }
 
 void AsyncIO::add_accept_request(int server_socket) {
-    std::printf("(%d)[Async] Add accept request on socket %d.\n", getpid(), server_socket);
     // Generate accept metadata
     AIOData* data = new AIOData{server_socket, AIOEventType::EVENT_ACCEPT, nullptr, 0, AIOMessageType::NONE};
     struct io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
     io_uring_prep_accept(sqe, server_socket, nullptr, nullptr, 0);
     io_uring_sqe_set_data(sqe, data);
-    io_uring_submit(&ring_);
+    int ret = io_uring_submit(&ring_);
+    if (ret < 0) {
+        fatal_error("Failed to submit io_uring request.");
+    }
 }
 
-void AsyncIO::add_connect_request(const std::string& ip, int port, WrapperMessage* wrapper_msg, AIOMessageType msg_type) {
-    std::printf("(%d)[Async] Add connect request on %s:%d.\n", getpid(), ip.c_str(), port);
+void AsyncIO::add_connect_request(const std::string& ip, int port, WrapperMessage*& wrapper_msg, AIOMessageType msg_type) {
     int client_socket;
     struct sockaddr_in clt_addr;
 
@@ -79,11 +81,13 @@ void AsyncIO::add_connect_request(const std::string& ip, int port, WrapperMessag
     struct io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
     io_uring_prep_connect(sqe, client_socket, (struct sockaddr *)&clt_addr, sizeof(clt_addr));
     io_uring_sqe_set_data(sqe, data);
-    io_uring_submit(&ring_);
+    int ret = io_uring_submit(&ring_);
+    if (ret < 0) {
+        fatal_error("Failed to submit io_uring request.");
+    }
 }
 
 void AsyncIO::add_read_request(int client_socket) {
-    std::printf("(%d)[Async] Add read request on socket %d.\n", getpid(), client_socket);
 
     set_nonblocking(client_socket);
 
@@ -96,11 +100,13 @@ void AsyncIO::add_read_request(int client_socket) {
     io_uring_sqe_set_data(sqe, data);
     set_timer(sqe);
 
-    io_uring_submit(&ring_);
+    int ret = io_uring_submit(&ring_);
+    if (ret < 0) {
+        fatal_error("Failed to submit io_uring request.");
+    }
 }
 
-void AsyncIO::_add_write_request_buf(int client_socket, char* buf, int buf_size, AIOMessageType msg_type) {
-    std::printf("(%d)[Async] Add write request on socket %d, message: %s\n", getpid(), client_socket, buf);
+void AsyncIO::_add_write_request_buf(int client_socket, char*& buf, int& buf_size, AIOMessageType msg_type) {
 
     set_nonblocking(client_socket);
 
@@ -111,10 +117,13 @@ void AsyncIO::_add_write_request_buf(int client_socket, char* buf, int buf_size,
     io_uring_sqe_set_data(sqe, data);
     set_timer(sqe);
 
-    io_uring_submit(&ring_);
+    int ret = io_uring_submit(&ring_);
+    if (ret < 0) {
+        fatal_error("Failed to submit io_uring request.");
+    }
 }
 
-void AsyncIO::add_write_request_msg(int client_socket, WrapperMessage* wrapper_msg, AIOMessageType msg_type) {
+void AsyncIO::add_write_request_msg(int client_socket, WrapperMessage*& wrapper_msg, AIOMessageType msg_type) {
     char* buf;
     int buf_size;
     serialize_msg_to_buf(wrapper_msg, buf, buf_size);
