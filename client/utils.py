@@ -27,7 +27,7 @@ def send_message(hostname: str, port: int, message: bytes, with_response=True) -
     try:
         print(f"sending {message} to {hostname}:{port}...")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(LocalConfig.message_timeout_ms)
+            # s.settimeout(LocalConfig.message_timeout_ms)
             s.connect((hostname, port))
             s.setblocking(False)
             s.send(message)

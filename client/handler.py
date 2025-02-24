@@ -1,5 +1,7 @@
 
+import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
+import unittest
 
 import utils
 from serializers.IntraShardReq import IntraShardReqSerializer
@@ -10,7 +12,7 @@ from serializers.printDatastoreReq import printDatastoreReqSerializer
 from serializers.printDatastoreRsp import printDatastoreRspSerializer
 from serializers.Stop import StopSerializer
 from serializers.Resume import ResumeSerializer
-import os, sys
+
 from config import LocalConfig
 
 
@@ -28,13 +30,13 @@ class TransactionHandler:
 
     
     @classmethod
-    def send_intra_shard_transaction_to_routingservice(cls, cluser_id: int, sender_id: int, recipient_id: int, amount: int):
+    def send_intra_shard_transaction_to_routingservice(cls, cluster_id: int, sender_id: int, recipient_id: int, amount: int):
         """Sending a intra-shard transaction request to the routing service"""
 
-        message = IntraShardReqSerializer.to_str(clusterId=cluser_id, senderId=sender_id, receiverId=recipient_id, amount=amount, id=1)
+        message = IntraShardReqSerializer.to_str(clusterId=cluster_id, senderId=sender_id, receiverId=recipient_id, amount=amount, id=1)
+
         ip, port = LocalConfig.routing_service_ip_port
-        
-        print("Sending intra-shard transaction request to routing service...")
+        print(f"Sending intra-shard transaction [clusterId={cluster_id}] request to routing service {ip}:{port}...")
 
         utils.send_message(ip, port, message, with_response=False)
         # intra_shard_response = IntraShardRspSerializer.parse(response)
@@ -53,7 +55,7 @@ class TransactionHandler:
         message = CrossShardReqSerializer.to_str(0, sender_cluser_id, recipient_cluser_id, sender_id, recipient_id, amount, 0)
         ip, port = LocalConfig.routing_service_ip_port
         
-        print("Sending cross-shard transaction request to routing service...")
+        print(f"Sending cross-shard transaction request[senderClusterId={sender_cluser_id}, receiverClusterId={recipient_cluser_id}] to routing service {ip}:{port}...")
 
         utils.send_message(ip, port, message, with_response=False)
         # cross_shard_response = CrossShardRspSerializer.parse(response)
@@ -71,6 +73,7 @@ class TransactionHandler:
         for i in range(LocalConfig.num_server_per_cluster):
             ip, port =  LocalConfig.server_ip_port_list[cluster_id][i]
             server_id = LocalConfig.num_server_per_cluster * cluster_id + i
+            print(f"Retrieving balance for {user_id} from cluster {cluster_id} and server {server_id}...")
             message = printBalanceReqSerializer.to_str(clusterId=cluster_id,serverId=server_id , dataItemID=user_id)
             response = utils.send_message(ip, port, message, with_response=True)
             print_balance_response = printBalanceRspSerializer.parse(response)
@@ -88,6 +91,7 @@ class TransactionHandler:
                 ip, port = LocalConfig.server_ip_port_list[i][j]
                 cluster_id = i
                 server_id = LocalConfig.server_index_to_id(i, j)
+                print(f"Retrieving datastore for from cluster {cluster_id} and server {server_id}...")
                 message = printDatastoreReqSerializer.to_str(cluster_id, server_id)
                 response = utils.send_message(ip, port, message, with_response=True)
                 print_datastore_response = printDatastoreRspSerializer.parse(response)
@@ -99,9 +103,11 @@ class TransactionHandler:
     def stop(cls, server_id: int):
         """Stop the designated server"""
         cluster_id = LocalConfig.get_cluster_id_for_server(server_id)
+        print(f"Stoping server {server_id} from cluster {cluster_id}...")
         message = StopSerializer.to_str(cluster_id, server_id)
         server_index = LocalConfig.server_id_to_index(server_id)
         ip, port = LocalConfig.server_ip_port_list[cluster_id][server_index]
+        print(f"Sending request to {ip}:{port}...")
         utils.send_message(ip, port, message, with_response=False)
         print(f"Server {server_id} stops SUCCEED")
         
@@ -110,8 +116,10 @@ class TransactionHandler:
     def resume(cls, server_id: int):
         """Resume the designated server"""
         cluster_id = LocalConfig.get_cluster_id_for_server(server_id)
+        print(f"Resuming server {server_id} from cluster {cluster_id}...")
         message = ResumeSerializer.to_str(cluster_id, server_id)
         server_index = LocalConfig.server_id_to_index(server_id)
         ip, port = LocalConfig.server_ip_port_list[cluster_id][server_index]
+        print(f"Sending request to {ip}:{port}...")
         utils.send_message(ip, port, message, with_response=False)
         print(f"Server {server_id} resumes SUCCEED")

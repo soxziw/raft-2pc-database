@@ -3,6 +3,7 @@ import os, sys, json
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
+import threading, socket, select
 import utils 
 from proto.wrapperMessage_pb2 import WrapperMessage
 from proto.intraShardRsp_pb2 import IntraShardResultType
@@ -43,7 +44,7 @@ class RoutingService:
         self.num_cluster = LocalConfig.num_cluster
 
         # store the leader of each cluster known via heartbeat
-        self.leader_per_cluster = [0] * self.num_cluster
+        self.leader_per_cluster = [-1] * self.num_cluster
 
         # track the number of "YES" in 2PC Commit/Abort phase
         self.num_reply_for_2PC = []
@@ -59,54 +60,70 @@ class RoutingService:
 
     def start(self):
         """Start the routing service asynchronously."""
-        asyncio.create_task(self.server_thread())
-        # threading.Thread(target=self.server_thread, daemon=True).start()
+        print(f"Starting the routing service on {self.hostname}:{self.port}...")
+        # asyncio.run(self.server_thread())
+        threading.Thread(target=self.server_thread, daemon=True).start()
 
-    # def server_thread(self):
-    #     """Using the TCP/UDP as the message passing protocal"""
-    #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
-    #         server.bind((self.hostname, self.port))
-    #         server.setblocking(False)
-    #         server.listen()
-    #         print(f"Routing service {self.client_id} listening on port {self.port}...")
-    #         while True:
-    #             conn, addr = server.accept()
-    #             # print(f"Accepted connection from {addr}")
-    #             with conn:
-    #                 request_message = conn.recv(utils.BUFFER_SIZE)
-    #                 self.handle_request(conn, request_message)
-    #             # close the connection
-    #             conn.close()
+    def server_thread(self):
+        """Using the TCP/UDP as the message passing protocal"""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+            server.bind((self.hostname, self.port))
+            server.setblocking(False)
+            server.listen()
+            print(f"Routing service listening on port {self.port}...")
+            # while True:
+            #     conn, addr = server.accept()
+            #     # print(f"Accepted connection from {addr}")
+            #     with conn:
+            #         request_message = conn.recv()
+            #         self.handle_request(conn, request_message)
+            #     # close the connection
+            #     conn.close()
+            while True:
+                readable, _, _ = select.select([server], [], [], 1)  # Timeout = 1 second
+                if server in readable:
+                    try:
+                        conn, addr = server.accept()
+                        # print(f"Accepted connection from {addr}")
+                        with conn:
+                            request_message = conn.recv(utils.BUFFER_SIZE)  # Adjust buffer size as needed
+                            self.handle_request(request_message)
+                    except BlockingIOError:
+                        continue  # No connection available, continue loop
+                    except Exception as e:
+                        print(f"Error handling request: {e}")
+                    finally:
+                         conn.close()
 
 
     
-    async def server_thread(self):
-        """Asynchronous and Non-Blocking TCP server for handling requests."""
-        server = await asyncio.start_server(
-            self.handle_connection, self.hostname, self.port
-        )
+    # async def server_thread(self):
+    #     """Asynchronous and Non-Blocking TCP server for handling requests."""
+    #     server = await asyncio.start_server(
+    #         self.handle_connection, self.hostname, self.port
+    #     )
 
-        addr = server.sockets[0].getsockname()
-        print(f"Routing service {self.client_id} listening on {addr}...")
+    #     addr = server.sockets[0].getsockname()
+    #     print(f"Routing service listening on {addr}...")
 
-        async with server:
-            await server.serve_forever()
-
-
-    async def handle_connection(self, reader, writer):
-        """Handle incoming connection from other clients"""
-        addr = writer.get_extra_info("peername")
-        print(f"Accepted connection from {addr}")
-
-        try:
-            request_message = await reader.read(utils.BUFFER_SIZE)  # Adjust buffer size as needed
-            await self.handle_request(writer, request_message)
-        finally:
-            writer.close()
-            await writer.wait_closed()
+    #     async with server:
+    #         await server.serve_forever()
 
 
-    async def handle_request(self, writer, request_message: bytes):
+    # async def handle_connection(self, reader, writer):
+    #     """Handle incoming connection from other clients"""
+    #     addr = writer.get_extra_info("peername")
+    #     print(f"Accepted connection from {addr}")
+
+    #     try:
+    #         request_message = await reader.read(utils.BUFFER_SIZE)  # Adjust buffer size as needed
+    #         await self.handle_request(writer, request_message)
+    #     finally:
+    #         writer.close()
+    #         await writer.wait_closed()
+
+
+    def handle_request(self, request_message: bytes):
         """Placeholder for handling incoming requests."""
         wrapper = WrapperMessage()
         wrapper.ParseFromString(request_message)
@@ -116,16 +133,19 @@ class RoutingService:
             cluster_id = LocalConfig.get_cluster_id_for_server(server_id)
             # new leader is elected, update leader table
             self.leader_per_cluster[cluster_id] = server_id
+            print(f"Routing service received AppendEntriesReq from server {server_id}...)")
+            print(f"Updating leader for cluster {cluster_id} to server {server_id}...")
             # execute all the pending request for that cluster
             pending_requests= self.transaction_request[cluster_id]
             if len(pending_requests) > 0:
+                print(f"Executing pending requests of cluster {cluster_id}...")
                 while pending_requests:
                     request = pending_requests.pop(0)
                     wrapper.ParseFromString(request)
                     if wrapper.HasField("intraShardReq"):
-                        self.redirect_intra_shard_request_to_server(request)
+                        asyncio.run(self.redirect_intra_shard_request_to_server(request))
                     elif wrapper.HasField("crossShardReq"):
-                        self.redirect_cross_shard_request_to_server(request, cluster_id)
+                        asyncio.run(self.redirect_cross_shard_request_to_server(request, cluster_id))
 
         elif wrapper.HasField("requestVoteReq"):
             request_vote_req = wrapper.requestVoteReq
@@ -133,45 +153,53 @@ class RoutingService:
             cluster_id = LocalConfig.get_cluster_id_for_server(server_id)
             # elections are on going, set leader to -1
             # server_id = [0,8]
+            print(f"Routing service received requestVoteReq from server {server_id}...)")
+            print(f"Updating leader for cluster {cluster_id} to -1...")
             self.leader_per_cluster[cluster_id] = -1
 
         elif wrapper.HasField("intraShardReq"):
             """Redirect an intra-shard transaction request to a designated server within the relevant cluster """
+            
             intra_shard_req = wrapper.intraShardReq
             cur = len(self.latency_for_intra)
             self.latency_for_intra.append(PerformanceMetricPerRequest(len(request_message)))
             cur += 1
-            message_with_id = IntraShardReqSerializer.to_str(intra_shard_req.clusterId, intra_shard_req.senderId, intra_shard_req.receiverId, intra_shard_req.amount, cur)
 
+            print(f"Routing service received intraShardReq from client...")
+            message_with_id = IntraShardReqSerializer.to_str(clusterId=intra_shard_req.clusterId, senderId=intra_shard_req.senderId,\
+                                                              receiverId=intra_shard_req.receiverId, amount=intra_shard_req.amount, id=cur)
             if self.leader_per_cluster[intra_shard_req.clusterId] == -1:
                 # no leader, put the request in the queue
+                print(f"No leader for cluster {intra_shard_req.clusterId}, putting request in the queue...")
                 self.transaction_request[intra_shard_req.clusterId].append(message_with_id)
                 return
             else:
-                self.redirect_intra_shard_request_to_server(message_with_id)
+                asyncio.run(self.redirect_intra_shard_request_to_server(message_with_id))
 
         elif wrapper.HasField("crossShardReq"):
             """Redirect a cross-shard transaction request to a designated server in each of the relevant clusters."""
-            cross_shard_req = wrapper.cross_shard_req
+            cross_shard_req = wrapper.crossShardReq
             # increment id for the cross-shard-request
             cur = len(self.num_reply_for_2PC)
             self.num_reply_for_2PC.append(0)
             self.latency_for_cross.append(PerformanceMetricPerRequest(len(request_message)))
             cur += 1
-            message_with_id = CrossShardReqSerializer.to_str(utils.CrossShardPhaseType.PREPARE, cross_shard_req.senderClusterId, cross_shard_req.receiverClusterId,\
-                                                 cross_shard_req.senderId, cross_shard_req.receiverId, cross_shard_req.amount, cur)
+            print(f"Routing service received crossShardReq from client...)")
+            message_with_id = CrossShardReqSerializer.to_str(utils.CrossShardPhaseType.PREPARE, cross_shard_req.senderClusterId, cross_shard_req.receiverClusterId,cross_shard_req.senderId, cross_shard_req.receiverId, cross_shard_req.amount, cur)
         
             if self.leader_per_cluster[cross_shard_req.senderClusterId] == -1:
                 # no leader, put the request in the queue
+                print(f"No leader for cluster {cross_shard_req.senderClusterId}, putting request in the queue...")
                 self.transaction_request[cross_shard_req.senderClusterId].append(message_with_id)
             else:
-                self.redirect_cross_shard_request_to_server(message_with_id, cross_shard_req.senderClusterId)
+                asyncio.run(self.redirect_cross_shard_request_to_server(message_with_id, cross_shard_req.senderClusterId))
 
             if self.leader_per_cluster[cross_shard_req.receiverClusterId] == -1:
                 # no leader, put the request in the queue
+                print(f"No leader for cluster {cross_shard_req.receiverClusterId}, putting request in the queue...")
                 self.transaction_request[cross_shard_req.receiverClusterId].append(message_with_id)
             else:
-                self.redirect_cross_shard_request_to_server(message_with_id, cross_shard_req.receiverClusterId)
+                asyncio.run(self.redirect_cross_shard_request_to_server(message_with_id, cross_shard_req.receiverClusterId))
                 
             
 
@@ -183,8 +211,7 @@ class RoutingService:
         server_index = LocalConfig.server_id_to_index(leader_id)
         ip, port = LocalConfig.server_ip_port_list[intra_shard_req.clusterId][server_index]
         
-        print(f"Routingservice redirecting intra-shard transaction request[user {intra_shard_req.senderId} transfers to user {intra_shard_req.receiverId}\
-               ${intra_shard_req.amount}] to cluser {intra_shard_req.cluster_id}, server {leader_id}...")
+        print(f"Routingservice redirecting intra-shard transaction request[user {intra_shard_req.senderId} transfers to user {intra_shard_req.receiverId} ${intra_shard_req.amount}] to cluster {intra_shard_req.clusterId}, leader is server {leader_id}[{ip}:{port}]...")
         
         response = await utils.send_message_async(ip, port, request_message, with_response=True)
 
@@ -195,6 +222,7 @@ class RoutingService:
             print(f"Transaction FAILED")
         
         self.latency_for_intra[intra_shard_response.id - 1].calculate_latency_and_throughput()
+
 
     async def redirect_cross_shard_request_to_server(self, request_message: bytes, cluster_id: int):
         wrapper = WrapperMessage()
@@ -207,9 +235,8 @@ class RoutingService:
         ip, port = LocalConfig.server_ip_port_list[cluster_id][server_index]
         
         print(f"Routingservice redirecting cross-shard transaction request[user {cross_shard_req.senderId} transfers to user {cross_shard_req.receiverId}\
-               ${cross_shard_req.amount}] to cluser {cluster_id}, server {leader_id}...")
+               ${cross_shard_req.amount}] to cluser {cluster_id}, leader is server {leader_id}[{ip}:{port}]...")
         
-
         try:
             response = await utils.send_message_async(ip, port, request_message)
             cross_shard_response = CrossShardRspSerializer.parse(response)

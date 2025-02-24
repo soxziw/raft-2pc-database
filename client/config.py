@@ -27,13 +27,13 @@ class LocalConfig:
     # print(server_ip_port_list)
 
 
-    @property
-    def server_ip_port_list(cls):
-        return cls.server_ip_port_list
+    # @property
+    # def server_ip_port_list(cls):
+    #     return cls.server_ip_port_list
     
-    @property
-    def routing_service_ip_port(cls):
-        return cls.routing_service_ip_port 
+    # @property
+    # def routing_service_ip_port(cls):
+    #     return cls.routing_service_ip_port 
     
     @classmethod
     def get_cluster_id_for_user(cls, user_id: int) -> int:

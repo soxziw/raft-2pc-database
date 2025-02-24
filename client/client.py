@@ -29,16 +29,16 @@ class Client:
             if re.match(r'(exit|quit|q)$', cmd):
                 print('Exiting...')
                 os._exit(0)
-            elif re.match(r'^(transfer|t)\s+\d+\s+\d+(\.\d+)?$', cmd):
+            elif re.match(r'^(transfer|t)\s+\d+\s+\d+\s+\d+(\.\d+)?$', cmd):
                 try:
                     sender, recipient, amount = cmd.split()[1:]
                 except ValueError:
                     print('Invalid transfer command')
                     continue
                 self.transfer(int(sender), int(recipient), int(amount))
-            elif re.match(r'(balance|bal|b)$', cmd):
+            elif re.match(r'balance|bal|b', cmd):
                 try:
-                    user = cmd.split()[1:]
+                    user = cmd.split()[1]
                 except ValueError:
                     print('Invalid balance command')
                     continue
@@ -49,14 +49,14 @@ class Client:
                 self.print_performance_metrics()
             elif re.match(r'stop|s', cmd):
                 try:
-                    server_id = cmd.split()[1:]
+                    server_id = cmd.split()[1]
                 except ValueError:
                     print('Invalid balance command')
                     continue
                 self.stop(int(server_id))
             elif re.match(r'resume|r', cmd):
                 try:
-                    server_id = cmd.split()[1:]
+                    server_id = cmd.split()[1]
                 except ValueError:
                     print('Invalid balance command')
                     continue
@@ -89,7 +89,7 @@ class Client:
         if sender_id not in range(1, 3001) or recipient_id not in range(1, 3001):
             print('Invalid transfer command: sender and receiver must be integers from 1 to 3000')
             return
-        if amount < 0 or type(amount) is not type(int):
+        if amount < 0 or not isinstance(amount, int):
             print("Invalid transfer command: Amount must be positive integer")
             return
         
@@ -175,8 +175,11 @@ class Client:
 if __name__ == "__main__":
         
         client = Client()
+
         # start the routing service
         client.routing_service.start()
-
+        
         # start user interaction
         client.prompt()
+
+        
