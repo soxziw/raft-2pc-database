@@ -1,6 +1,5 @@
 # Build result
 build/*
-client/proto/*
 
 # Prerequisites
 *.d
