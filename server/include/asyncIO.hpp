@@ -60,7 +60,7 @@ public:
      *
      * @param sqe
      */
-    void set_timer(struct io_uring_sqe* sqe);
+    void set_timer(struct io_uring_sqe*& sqe);
 
     /**
      * add_timeout_request - Add timeout event, periodically wakeup.
@@ -84,7 +84,7 @@ public:
      * @param wrapper_msg protobuf message to send
      * @param msg_type type of message
      */
-    void add_connect_request(const std::string& ip, int port, WrapperMessage* wrapper_msg, AIOMessageType msg_type);
+    void add_connect_request(const std::string& ip, int port, WrapperMessage*& wrapper_msg, AIOMessageType msg_type);
 
     /**
      * add_read_request - Add read event waiting for writing from client.
@@ -102,7 +102,7 @@ public:
      * @param buf_size size of buffer
      * @param msg_type type of message
      */
-    void _add_write_request_buf(int client_socket, char* buf, int buf_size, AIOMessageType msg_type);
+    void _add_write_request_buf(int client_socket, char*& buf, int& buf_size, AIOMessageType msg_type);
 
     /**
      * add_write_request_msg - Add write event to client, message stored in protobuf.
@@ -111,7 +111,7 @@ public:
      * @param wrapper_msg protobuf message
      * @param msg_type type of message
      */
-    void add_write_request_msg(int client_socket, WrapperMessage* wrapper_msg, AIOMessageType msg_type);
+    void add_write_request_msg(int client_socket, WrapperMessage*& wrapper_msg, AIOMessageType msg_type);
 
     struct io_uring ring_; // io_uring object
     int message_timeout_ms_; // timeout for reading and writing

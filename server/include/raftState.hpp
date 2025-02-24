@@ -39,7 +39,7 @@ public:
     int log_granted_num_; // Number of success log replication in this term
     int coming_commit_index_; // Coming commit index in this term, if log_granted_num_ >= majority
     int commit_index_; // Commited index
-    std::vector<int> next_log_index_; // Next log index for each server
+    std::vector<int> matched_log_size_; // Matched log size for each server
     std::unordered_map<int, int> local_balance_tb_; // Local balance table
     std::unordered_map<int, bool> local_lock_; // Local lock for data items
 

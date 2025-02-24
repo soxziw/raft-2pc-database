@@ -1,53 +1,53 @@
 {
     "ROUTING_SERVICE":
     {
-        "IP": "localhost",
+        "IP": "127.0.0.1",
         "PORT": 8000
     },
     "SERVERS":
     [
         [
             {
-                "IP": "localhost", 
+                "IP": "127.0.0.1", 
                 "PORT": 5001
             },
             {
-                "IP": "localhost",
+                "IP": "127.0.0.1",
                 "PORT": 5002
             },
             {
-                "IP": "localhost",
+                "IP": "127.0.0.1",
                 "PORT": 5003
             }
         ],
         [
             {
-                "IP": "localhost",
+                "IP": "127.0.0.1",
                 "PORT": 5004
             },
             {
-                "IP": "localhost",
+                "IP": "127.0.0.1",
                 "PORT": 5005
             },
             {
-                "IP": "localhost",
+                "IP": "127.0.0.1",
                 "PORT": 5006
             }
         ],
         [
             {
-                "IP": "localhost",
+                "IP": "127.0.0.1",
                 "PORT": 5007
             },
             {
-                "IP": "localhost",
+                "IP": "127.0.0.1",
                 "PORT": 5008
             },
             {
-                "IP": "localhost",
+                "IP": "127.0.0.1",
                 "PORT": 5009
             }
         ]
     ],
-    "MESSAGE_TIMEOUT_MS": 30
+    "MESSAGE_TIMEOUT_MS": 500
 }

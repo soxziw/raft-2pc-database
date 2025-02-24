@@ -8,6 +8,8 @@
 #include "wrapperMessage.pb.h"
 
 const int SERVER_NUM_PER_CLUSTER = 3;
+const int HEAT_BEAT_INTERVAL_MS = 5000;
+const int TERM_TIMEOUT_MS = 15000;
 
 /**
  * AIOServer - Server with async I/O.
@@ -58,7 +60,7 @@ public:
      * @param client_socket socket of client
      * @param wrapper_msg protobuf message
      */
-    void process(int client_socket, const WrapperMessage* wrapper_msg);
+    void process(int client_socket, WrapperMessage*& wrapper_msg);
 
     int cluster_id_;
     int server_id_;

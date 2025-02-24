@@ -17,7 +17,7 @@ void fatal_error(const std::string& str) {
 }
 
 void load_data_shard(std::shared_ptr<RaftState> raft_state) {
-    std::printf("(%d)[%d:%d] Load data shard.\n", getpid(), raft_state->cluster_id_, raft_state->server_id_);
+    std::printf("[%d:%d] Load data shard.\n", raft_state->cluster_id_, raft_state->server_id_);
     // Open data shard file with read only permission
     std::filesystem::path file_path = std::filesystem::path(DATA_SHARD_BASE) / ("dataShard" + std::to_string(raft_state->cluster_id_) + ".nlohmann::jsonl");
     int fd = open(file_path.c_str(), O_RDONLY);
@@ -67,7 +67,7 @@ void load_data_shard(std::shared_ptr<RaftState> raft_state) {
 }
 
 void update_data_shard(std::shared_ptr<RaftState> raft_state) {
-    std::printf("(%d)[%d:%d] Update data shard.\n", getpid(), raft_state->cluster_id_, raft_state->server_id_);
+    std::printf("[%d:%d] Update data shard.\n", raft_state->cluster_id_, raft_state->server_id_);
     // Open data shard file with read only permission
     std::filesystem::path file_path = std::filesystem::path(DATA_SHARD_BASE) / ("dataShard" + std::to_string(raft_state->cluster_id_) + ".nlohmann::jsonl");
     int fd = open(file_path.c_str(), O_RDWR);
@@ -130,19 +130,18 @@ void update_data_shard(std::shared_ptr<RaftState> raft_state) {
     close(fd);
 }
 
-void serialize_msg_to_buf(WrapperMessage* wrapper_msg, char* buf, int buf_size) {
+void serialize_msg_to_buf(WrapperMessage*& wrapper_msg, char*& buf, int& buf_size) {
     // Serialize and delete message object
     std::string serialized;
     wrapper_msg->SerializeToString(&serialized);
     delete wrapper_msg;
-    
     // Create and fill buffer object
     buf = new char[serialized.size()];
     memcpy(buf, serialized.data(), serialized.size());
     buf_size = serialized.size();
 }
 
-void parse_buf_to_msg(WrapperMessage* wrapper_msg, char* buf, int buf_size) {
+void parse_buf_to_msg(WrapperMessage*& wrapper_msg, char*& buf, int& buf_size) {
     // Create and parse message object
     wrapper_msg = new WrapperMessage;
     wrapper_msg->ParseFromArray(buf, buf_size);
