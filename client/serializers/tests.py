@@ -1,9 +1,9 @@
 import os, sys
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import unittest
 from proto.intraShardRsp_pb2 import IntraShardResultType
-from proto.crossShardReq_pb2 import CrossShardPhaseType
 from proto.crossShardRsp_pb2 import CrossShardResultType
 from proto.appendEntriesReq_pb2 import Entry
 from serializers.IntraShardReq import IntraShardReqSerializer
@@ -17,6 +17,7 @@ from serializers.printBalanceRsp import printBalanceRspSerializer
 from serializers.printDatastoreReq import printDatastoreReqSerializer
 from serializers.printDatastoreRsp import printDatastoreRspSerializer
 from proto.wrapperMessage_pb2 import WrapperMessage
+from utils import CrossShardPhaseType
 
 
 class Test2PCClient(unittest.TestCase):
@@ -36,7 +37,7 @@ class Test2PCClient(unittest.TestCase):
         self.assertEqual(deserialized_intra_shard_rsp.id, 10)
 
     def test_cross_shard_req(self):
-        cross_shard_req_str = CrossShardReqSerializer.to_str(phase=0, senderClusterId = 1, receiverClusterId = 2, senderId=1, receiverId=1001, amount=5, id=1)
+        cross_shard_req_str = CrossShardReqSerializer.to_str(phase=CrossShardPhaseType.PREPARE, senderClusterId = 1, receiverClusterId = 2, senderId=1, receiverId=1001, amount=5, id=1)
         deserialzed_cross_shard_req = CrossShardReqSerializer.parse(cross_shard_req_str)
         self.assertEqual(deserialzed_cross_shard_req.phase, CrossShardPhaseType.PREPARE)
         self.assertEqual(deserialzed_cross_shard_req.senderClusterId, 1)
@@ -70,14 +71,14 @@ class Test2PCClient(unittest.TestCase):
         self.assertEqual(deserialized_print_datastore_req.serverId, 5)
 
     def test_print_datastore_rsp(self):
-        entries = [Entry(term=1, index = 2,command = "election")]
+        entries = [Entry(term=1, index = 2,command = "transfer 1 2 5")]
         print_datastore_rsp_str = printDatastoreRspSerializer.to_str(clusterId=1, serverId=5, entries=entries)
         deserialized_print_datastore_rsp = printDatastoreRspSerializer.parse(print_datastore_rsp_str)
         self.assertEqual(deserialized_print_datastore_rsp.clusterId, 1)
         self.assertEqual(deserialized_print_datastore_rsp.serverId, 5)
         self.assertEqual(deserialized_print_datastore_rsp.entries[0].term, 1)
         self.assertEqual(deserialized_print_datastore_rsp.entries[0].index, 2)
-        self.assertEqual(deserialized_print_datastore_rsp.entries[0].command, "election")
+        self.assertEqual(deserialized_print_datastore_rsp.entries[0].command, "transfer 1 2 5")
 
 
     def test_print_balance_req(self):
