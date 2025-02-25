@@ -10,6 +10,8 @@
 
 
 void AppendEntriesExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const AppendEntriesReq& req) {
+    std::printf("[%d:%d][DETAIL] AppendEntriesReq: term=%d, leaderId=%d, prevLogIndex=%d, prevLogTerm=%d, entriesSize=%d, commitIndex=%d, serverId=%d\n", raft_state->cluster_id_, raft_state->server_id_, req.term(), req.leaderid(), req.prevlogindex(), req.prevlogterm(), req.entries().size(), req.commitindex(), req.serverid());
+    std::printf("[%d:%d][COND] term=%d\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);
     // Generate response
     WrapperMessage* wrapper_msg = new WrapperMessage;
     AppendEntriesRsp* rsp = wrapper_msg->mutable_appendentriesrsp();
@@ -36,7 +38,7 @@ void AppendEntriesExecutor::executeReq(int client_socket, std::shared_ptr<AsyncI
             int idx = 0;
             for (const Entry& entry : req.entries()) {
                 // Unmatch or end of log of current server
-                if (!(entry.term() == raft_state->log_[log_idx_base + idx].term) || (int)raft_state->log_.size() <= log_idx_base + idx) {
+                if ((int)raft_state->log_.size() <= log_idx_base + idx || !(entry.term() == raft_state->log_[log_idx_base + idx].term)) {
                     while ((int)raft_state->log_.size() > log_idx_base + idx) {
                         raft_state->log_.pop_back();
                     }
@@ -100,6 +102,7 @@ void AppendEntriesExecutor::executeRsp(int client_socket, std::shared_ptr<AsyncI
                                     CrossShardRsp* rsp = wrapper_msg->mutable_crossshardrsp();
                                     rsp->set_result(CrossShardResultType::YES);
                                     rsp->set_id(raft_state->log_[idx].id);
+                                    std::printf("[%d:%d][DETAIL] CrossShardRsp: result=%d, id=%d\n", raft_state->cluster_id_, raft_state->server_id_, rsp->result(), rsp->id());
                                     aio->add_write_request_msg(raft_state->log_[idx].req_fd, wrapper_msg, AIOMessageType::NO_RESPONSE);
                                     raft_state->log_[idx].req_fd = -1;
                                 }
@@ -118,6 +121,7 @@ void AppendEntriesExecutor::executeRsp(int client_socket, std::shared_ptr<AsyncI
                                 IntraShardRsp* rsp = wrapper_msg->mutable_intrashardrsp();
                                 rsp->set_result(IntraShardResultType::SUCCESS);
                                 rsp->set_id(raft_state->log_[idx].id);
+                                std::printf("[%d:%d][DETAIL] IntraShardRsp: result=%d, id=%d\n", raft_state->cluster_id_, raft_state->server_id_, rsp->result(), rsp->id());
                                 aio->add_write_request_msg(raft_state->log_[idx].req_fd, wrapper_msg, AIOMessageType::NO_RESPONSE);
                                 raft_state->log_[idx].req_fd = -1;
                             }

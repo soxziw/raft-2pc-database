@@ -19,5 +19,4 @@ clean:
 	@mkdir -p build
 	@CC=/usr/bin/clang-15 CXX=/usr/bin/clang++-15 cmake -B build -S . > /dev/null 2>&1
 	@make -C build cleanup | grep -vE "make\[[0-9]+\]"
-	@rm -rf client/proto
 	@rm -rf build
