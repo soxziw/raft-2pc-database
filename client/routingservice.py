@@ -247,7 +247,7 @@ class RoutingService:
                 print(f"Transaction request now gets {self.num_reply_for_2PC[id - 1]} YES from leaders...")
                 if self.num_reply_for_2PC[id - 1] == 2:
                     # collect all votes, enter 2PC COMMIT phase
-                    self.broadcast_commit_message(request_message)
+                    await self.broadcast_commit_message(request_message)
 
             elif cross_shard_response.result == CrossShardResultType.NO:
                 # remove request from the other cluster if there is
@@ -257,7 +257,7 @@ class RoutingService:
                 # self.transaction_request[cluster_to_remove - 1].remove(request_message)
                 if self.num_reply_for_2PC[id - 1] != -1:
                     print(f"Transaction request receives NO from leaders...")
-                    self.broadcast_abort_message(request_message)
+                    await self.broadcast_abort_message(request_message)
                 # update reply status to -1
                 self.num_reply_for_2PC[id - 1] = -1
                
@@ -288,9 +288,9 @@ class RoutingService:
         print(f"Broadcasting COMMIT to all servers in cluster {sender_cluster_id} and cluster {receiver_cluster_id}...")
         for i in range(LocalConfig.num_server_per_cluster):
             ip, port = LocalConfig.server_ip_port_list[sender_cluster_id][i]
-            utils.send_message_async(ip, port, message_commited, with_response=False)
+            await utils.send_message_async(ip, port, message_commited, with_response=False)
             ip, port = LocalConfig.server_ip_port_list[receiver_cluster_id][i]
-            utils.send_message_async(ip, port, message_commited, with_response=False)
+            await utils.send_message_async(ip, port, message_commited, with_response=False)
         print("Transaction completed")
         self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()
 
@@ -306,7 +306,7 @@ class RoutingService:
         print(f"Broadcasting ABORT to all servers in cluster {sender_cluster_id} and cluster {receiver_cluster_id}...")
         for i in range(LocalConfig.num_server_per_cluster):
             ip, port = LocalConfig.server_ip_port_list[sender_cluster_id][i]
-            utils.send_message_async(ip, port, message_aborted, with_response=False)
+            await utils.send_message_async(ip, port, message_aborted, with_response=False)
             ip, port = LocalConfig.server_ip_port_list[receiver_cluster_id][i]
-            utils.send_message_async(ip, port, message_aborted, with_response=False)
+            await utils.send_message_async(ip, port, message_aborted, with_response=False)
         self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()

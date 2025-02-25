@@ -18,5 +18,5 @@ int RaftState::prevlogindex(int idx) {
 }
 
 int RaftState::prevlogterm(int idx) {
-    return log_.empty() ? -1 : log_[matched_log_size_[idx] - 1].term;
+    return matched_log_size_[idx] == 0 ? -1 : log_[matched_log_size_[idx] - 1].term;
 }

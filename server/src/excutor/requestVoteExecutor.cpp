@@ -3,6 +3,8 @@
 
 
 void RequestVoteExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const RequestVoteReq& req) {
+    std::printf("[%d:%d][DETAIL] RequestVoteReq: candidateId=%d, term=%d, lastLogIndex=%d, lastLogTerm=%d\n", raft_state->cluster_id_, raft_state->server_id_, req.candidateid(), req.term(), req.lastlogindex(), req.lastlogterm());
+    std::printf("[%d:%d][COND] term=%d\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);
     // Generate response
     WrapperMessage* wrapper_msg = new WrapperMessage;
     RequestVoteRsp* rsp = wrapper_msg->mutable_requestvotersp();
