@@ -116,8 +116,10 @@ class Client:
         print('-'*30)
         datastore_res =  TransactionHandler.get_data_store()
         for i in range(len(datastore_res)):
-            print(f"   clusterId: {datastore_res[i][0]}, serverId: {datastore_res[i][1]}, term: {datastore_res[i][2]}, \
-                  index: {datastore_res[i][3]}, command: {datastore_res[i][4]}")
+            cluster_id = LocalConfig.get_cluster_id_for_server(i)
+            print(f"   clusterId: {cluster_id}, serverId: {i}")
+            for entry in datastore_res[i]:
+                print(f"   term: {entry[2]}, index: {entry[3]}, command: {entry[4]}")
             print('-'*30)
 
 

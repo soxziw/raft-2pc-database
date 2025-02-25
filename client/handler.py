@@ -88,15 +88,18 @@ class TransactionHandler:
         datastore_res = []
         for i in range(LocalConfig.num_cluster):
             for j in range(LocalConfig.num_server_per_cluster):
+                datastore_per_server = []
                 ip, port = LocalConfig.server_ip_port_list[i][j]
                 cluster_id = i
                 server_id = LocalConfig.server_index_to_id(i, j)
                 print(f"Retrieving datastore for from cluster {cluster_id} and server {server_id}...")
-                message = printDatastoreReqSerializer.to_str(cluster_id, server_id)
+                message = printDatastoreReqSerializer.to_str(clusterId=cluster_id, serverId=server_id)
+                print(printDatastoreReqSerializer.parse(message))
                 response = utils.send_message(ip, port, message, with_response=True)
                 print_datastore_response = printDatastoreRspSerializer.parse(response)
                 for entry in print_datastore_response.entries:
-                    datastore_res.append((cluster_id, server_id, entry.term, entry.index, entry.command))
+                    datastore_per_server.append((cluster_id, server_id, entry.term, entry.index, entry.command))
+                datastore_res.append(datastore_per_server)
         return datastore_res
     
     @classmethod
