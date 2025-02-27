@@ -1,11 +1,26 @@
 
 import time
+import json
+import concurrent
+import requests
 import utils
 import re, os
 from handler import TransactionHandler
 from routingservice import RoutingService
 import asyncio
 from config import LocalConfig
+import logging
+
+
+
+# Configure logging
+logging.basicConfig(
+    filename="load_test.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+CONCURRENT_WORKERS = 10
 
 
 class Client:
@@ -35,7 +50,7 @@ class Client:
                 except ValueError:
                     print('Invalid transfer command')
                     continue
-                self.transfer(int(sender), int(recipient), int(amount))
+                self.create_single_transfer(int(sender), int(recipient), int(amount))
             elif re.match(r'balance|bal|b', cmd):
                 try:
                     user = cmd.split()[1]
@@ -46,21 +61,21 @@ class Client:
             elif re.match(r'datastore|ds', cmd):
                 self.print_data_store()
             elif re.match(r'performance|p', cmd):
-                self.print_performance_metrics()
+                self.start_load_test()
             elif re.match(r'stop|s', cmd):
                 try:
                     server_id = cmd.split()[1]
                 except ValueError:
                     print('Invalid balance command')
                     continue
-                self.stop(int(server_id))
+                self.stop_server(int(server_id))
             elif re.match(r'resume|r', cmd):
                 try:
                     server_id = cmd.split()[1]
                 except ValueError:
                     print('Invalid balance command')
                     continue
-                self.resume(int(server_id))
+                self.resume_server(int(server_id))
             else:
                 print('Invalid command, please re-enter')
             print()
@@ -81,7 +96,7 @@ class Client:
         print('Please enter a command:')
 
 
-    def transfer(self, sender_id: int, recipient_id: int, amount: int):
+    def create_single_transfer(self, sender_id: int, recipient_id: int, amount: int):
         """Issue a new transfer transaction"""
         if sender_id is None or recipient_id is None or amount is None:
             print('Invalid transfer command: sender and receiver must not be null')
@@ -125,54 +140,142 @@ class Client:
         print('-'*30)
         datastore_res =  TransactionHandler.get_data_store()
         for i in range(len(datastore_res)):
-            print(f"   clusterId: {datastore_res[i][0]}, serverId: {datastore_res[i][1]}, term: {datastore_res[i][2]}, \
-                  index: {datastore_res[i][3]}, command: {datastore_res[i][4]}")
+            cluster_id = LocalConfig.get_cluster_id_for_server(i)
+            print(f"   clusterId: {cluster_id}, serverId: {i}")
+            for entry in datastore_res[i]:
+                print(f"   term: {entry[2]}, index: {entry[3]}, command: {entry[4]}")
             print('-'*30)
 
 
-    def print_performance_metrics(self):
+    def start_load_test(self):
         """Prints throughput and latency from the time the client initiates a transaction to the time the client process receives a reply message."""
+       
+        script_dir = os.path.dirname(os.path.abspath(__file__))  # Get current script directory
+        intra_shard_file_path = os.path.join(script_dir, 'test/intra_shard_test_1000.txt')
+        cross_shard_file_path = os.path.join(script_dir, 'test/cross_shard_test_1000.txt')
+        intra_cross_shard_file_path = os.path.join(script_dir, 'test/intra_cross_shard_test_1000.txt')
+
+                    
+        print("Start load testing for intra-shard transactions...")
+        logging.info("Start load testing for intra-shard transactions...")
+        self.routing_service.latency_for_intra = []
+        with open(os.path.abspath(intra_shard_file_path)) as file:
+            for line in file:
+                try:
+                    sender, recipient, amount = line.strip("()").split(",")[0:]
+                except ValueError:
+                    print('Invalid transfer command')
+                    continue
+                self.create_single_transfer(int(sender), int(recipient), int(amount))
         
-        print(f"Calculating latency and throughput from all previous intra-shard transactions...")
+        time.sleep(utils.HANDLE_REQUEST_TIME_DELAY)
+        print(f"Calculating latency and throughput for all intra-shard transactions...")
         print('-'*30)
+        logging.info(f"Calculating latency and throughput for all intra-shard transactions...")
+        logging.info('-'*30)
         total_latency = 0
-        total_throughtput = 0
+        requests_processed = 0
         for metric in self.routing_service.latency_for_intra:
-            total_latency += metric.latency
-            total_throughtput += metric.throughput_bps
-
-        avg_latency = total_latency // len(self.routing_service.latency_for_intra)
-        avg_throughpput = total_throughtput // len(self.routing_service.latency_for_intra)
-        print(f"Average latency of intra-shard transaction is : {avg_latency:.3f}ms")
-        print(f"Average throughput of intra-shard transaction is : {avg_throughpput / 1e6:.3f} Mbps")
+            if metric.latency_s is not None:
+                total_latency += metric.latency_s
+                requests_processed += 1
+        avg_latency = total_latency / requests_processed
+        avg_throughpput = requests_processed / total_latency
+        print(f"Total requests processed: {requests_processed}/{requests_processed}")
+        print(f"Average latency of intra-shard transactions is : {avg_latency:.3f}s")
+        print(f"Average throughput(Requests Per Second) of intra-shard transactions is : {avg_throughpput:.3f}rps")
         print('-'*30)
+        logging.info(f"Total requests processed: {requests_processed}/{requests_processed}")
+        logging.info(f"Average latency of intra-shard transactions is : {avg_latency:.3f}s")
+        logging.info(f"Average throughput(Requests Per Second) of intra-shard transactions is : {avg_throughpput:.3f}rps")
+        logging.info('-'*30)
 
-        print(f"Calculating latency and throughput from all previous cross-shard transactions...")
+
+
+        print("Start load testing for cross-shard transactions...")
+        logging.info("Start load testing for cross-shard transactions...")
+        self.routing_service.latency_for_cross = []
+        with open(os.path.abspath(cross_shard_file_path)) as file:
+            for line in file:
+                try:
+                    sender, recipient, amount = line.strip("()").split(",")[0:]
+                except ValueError:
+                    print('Invalid transfer command')
+                    continue
+                self.create_single_transfer(int(sender), int(recipient), int(amount))
+        
+        time.sleep(utils.HANDLE_REQUEST_TIME_DELAY)
+        print(f"Calculating latency and throughput for all cross-shard transactions...")
         print('-'*30)
+        logging.info(f"Calculating latency and throughput for all cross-shard transactions...")
+        logging.info('-'*30)
         total_latency = 0
-        total_throughtput = 0
-        for metric in self.routing_service.latency_for_cross:
-            total_latency += metric.latency
-            total_throughtput += metric.throughput_bps
-
-        avg_latency = total_latency // len(self.routing_service.latency_for_cross)
-        avg_throughpput = total_throughtput // len(self.routing_service.latency_for_cross)
-        print(f"Average latency of cross-shard transaction is : {avg_latency:.3f}ms")
-        print(f"Average throughput of cross-shard transaction is : {avg_throughpput / 1e6:.3f} Mbps")
+        requests_processed = 0
+        for metric in self.routing_service.latency_for_intra:
+            if metric.latency_s is not None:
+                total_latency += metric.latency_s
+                requests_processed += 1
+        avg_latency = total_latency / requests_processed
+        avg_throughpput = requests_processed / total_latency
+        print(f"Total requests processed: {requests_processed}/{requests_processed}")
+        print(f"Average latency of cross-shard transactions is : {avg_latency:.3f}s")
+        print(f"Average throughput(Requests Per Second) of cross-shard transactions is : {avg_throughpput:.3f}rps")
         print('-'*30)
+        logging.info(f"Total requests processed: {requests_processed}/{requests_processed}")
+        logging.info(f"Average latency of cross-shard transactions is : {avg_latency:.3f}s")
+        logging.info(f"Average throughput(Requests Per Second) of cross-shard transactions is : {avg_throughpput:.3f}rps")
+        logging.info('-'*30)
 
 
 
+        print("Start load testing for intra-shard and cross-shard transactions...")
+        logging.info("Start load testing for intra-shard and cross-shard transactions...")
+        self.routing_service.latency_for_intra = []
+        self.routing_service.latency_for_cross = []
+        with open(os.path.abspath(intra_cross_shard_file_path)) as file:
+            for line in file:
+                try:
+                    sender, recipient, amount = line.strip("()").split(",")[0:]
+                except ValueError:
+                    print('Invalid transfer command')
+                    continue
+                self.create_single_transfer(int(sender), int(recipient), int(amount))
+        
+        time.sleep(utils.HANDLE_REQUEST_TIME_DELAY)
+        print(f"Calculating latency and throughput from all intra-shard and cross-shard transactions...")
+        print('-'*30)
+        logging.info(f"Calculating latency and throughput from all intra-shard and cross-shard transactions...")
+        logging.info('-'*30)
+        total_latency = 0
+        requests_processed = 0
+        for metric in self.routing_service.latency_for_intra:
+            if metric.latency_s is not None:
+                total_latency += metric.latency_s
+                requests_processed += 1
+        for metric in self.routing_service.latency_for_cross:
+            if metric.latency_s is not None:
+                total_latency += metric.latency_s
+                requests_processed += 1
+        avg_latency = total_latency / requests_processed
+        avg_throughpput = requests_processed / total_latency
+        print(f"Total requests processed: {requests_processed}/{requests_processed}")
+        print(f"Average latency of intra-shard and cross-shard transactions is : {avg_latency:.3f}s")
+        print(f"Average throughput(Requests Per Second) of intra-shard and cross-shard transaction is : {avg_throughpput:.3f}rps")
+        print('-'*30)
+        logging.info(f"Total requests processed: {requests_processed}/{requests_processed}")
+        logging.info(f"Average latency of intra-shard and cross-shard transactions is : {avg_latency:.3f}s")
+        logging.info(f"Average throughput(Requests Per Second) of intra-shard and cross-shard transaction is : {avg_throughpput:.3f}rps")
+        logging.info('-'*30)
 
 
-    def stop(self, server_id):
+    def stop_server(self, server_id):
         if server_id not in range(0, 9):
             print('Invalid stop command: server id must be integers from 0 to 8')
             return
         print(f"Stoping server {server_id}...")
         TransactionHandler.stop(server_id)
     
-    def resume(self, server_id):
+    def resume_server(self, server_id):
         if server_id not in range(0, 9):
             print('Invalid resume command: server id must be integers from 0 to 8')
             return

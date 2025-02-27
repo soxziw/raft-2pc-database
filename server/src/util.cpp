@@ -19,7 +19,7 @@ void fatal_error(const std::string& str) {
 void load_data_shard(std::shared_ptr<RaftState> raft_state) {
     std::printf("[%d:%d] Load data shard.\n", raft_state->cluster_id_, raft_state->server_id_);
     // Open data shard file with read only permission
-    std::filesystem::path file_path = std::filesystem::path(DATA_SHARD_BASE) / ("dataShard" + std::to_string(raft_state->cluster_id_) + ".nlohmann::jsonl");
+    std::filesystem::path file_path = std::filesystem::path(DATA_SHARD_BASE) / ("dataShard" + std::to_string(raft_state->cluster_id_) + ".jsonl");
     int fd = open(file_path.c_str(), O_RDONLY);
     struct stat file_stat;
     if (fstat(fd, &file_stat) == -1) {
@@ -54,7 +54,7 @@ void load_data_shard(std::shared_ptr<RaftState> raft_state) {
         try {
             nlohmann::json j = nlohmann::json::parse(line);
             int id = j["id"];
-            int balance = j["balance"];
+            int balance = j["units"];
             raft_state->local_balance_tb_[id] = balance;
         } catch (const nlohmann::json::exception& e) {
             std::printf("%s", fmt::format("nlohmann::json parsing error: {}\n", e.what()).c_str());

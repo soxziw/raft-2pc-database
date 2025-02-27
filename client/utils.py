@@ -1,4 +1,5 @@
 import socket
+import select
 import asyncio
 from datetime import datetime
 from config  import LocalConfig
@@ -22,19 +23,32 @@ def get_current_time(fmt='%Y-%m-%dT%H:%M:%S'):
     return datetime.now().strftime(fmt)
 
 def send_message(hostname: str, port: int, message: bytes, with_response=True) -> bytes:
-    """Using the TCP/UDP as the message passing protocal"""
+    """Using TCP as the message passing protocol with proper error handling."""
     response = None
     try:
         print(f"sending {message} to {hostname}:{port}...")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            # s.settimeout(LocalConfig.message_timeout_ms)
             s.connect((hostname, port))
             s.setblocking(False)
-            s.send(message)
+
+            # Wait for the socket to be writable
+            _, writable, _ = select.select([], [s], [], 5)  # 5s timeout
+            if not writable:
+                raise TimeoutError("Socket not ready for writing")
+            
+            s.sendall(message)  # sendall ensures the full message is sent
+
             if with_response:
+                # Wait for the socket to be readable
+                readable, _, _ = select.select([s], [], [], 5)
+                if not readable:
+                    raise TimeoutError("Socket not ready for reading")
+
                 response = s.recv(BUFFER_SIZE)
     except socket.timeout:
-        raise TimeoutError("socket timeout")
+        raise TimeoutError("Socket operation timed out")
+    except BlockingIOError:
+        raise RuntimeError("Non-blocking socket operation failed (BlockingIOError)")
     return response
     
 

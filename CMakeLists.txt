@@ -64,18 +64,18 @@ if(BUILD_CLIENT)
         COMMENT "Creating Python virtual environment and installing dependencies"
     )
 
-    # Generate Python protobuf files
-    add_custom_command(
-        OUTPUT python_proto
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/client/proto
-        COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
-            --python_out=${CMAKE_SOURCE_DIR}/client/proto
-            --proto_path=${CMAKE_SOURCE_DIR}/proto
-            ${PROTO_FILES}
-        DEPENDS ${PROTO_FILES}
-        COMMENT "Generating Python protocol buffers..."
-    )
-    add_custom_target(generate_python_proto ALL DEPENDS python_proto)
+    # # Generate Python protobuf files
+    # add_custom_command(
+    #     OUTPUT python_proto
+    #     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/client/proto
+    #     COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+    #         --python_out=${CMAKE_SOURCE_DIR}/client/proto
+    #         --proto_path=${CMAKE_SOURCE_DIR}/proto
+    #         ${PROTO_FILES}
+    #     DEPENDS ${PROTO_FILES}
+    #     COMMENT "Generating Python protocol buffers..."
+    # )
+    # add_custom_target(generate_python_proto ALL DEPENDS python_proto)
 
     # Make 2PCClient depend on Python proto generation
     add_dependencies(2PCClient generate_python_proto)

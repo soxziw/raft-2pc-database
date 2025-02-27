@@ -40,15 +40,15 @@ void AIOServer::broadcast_vote() {
     raft_state_->vote_granted_num_ = 1;
     std::printf("[%d:%d][CANDIDATE:%d] Vote.\n", cluster_id_, server_id_, raft_state_->current_term_);
 
-    // // Send to routing service
-    // WrapperMessage* wrapper_msg = new WrapperMessage;
-    // RequestVoteReq* req = wrapper_msg->mutable_requestvotereq();
-    // req->set_candidateid(server_id_);
-    // req->set_term(raft_state_->current_term_);
-    // req->set_lastlogindex(raft_state_->lastlogindex());
-    // req->set_lastlogterm(raft_state_->lastlogterm());
+    // Send to routing service
+    WrapperMessage* wrapper_msg = new WrapperMessage;
+    RequestVoteReq* req = wrapper_msg->mutable_requestvotereq();
+    req->set_candidateid(server_id_);
+    req->set_term(raft_state_->current_term_);
+    req->set_lastlogindex(raft_state_->lastlogindex());
+    req->set_lastlogterm(raft_state_->lastlogterm());
 
-    // aio_->add_connect_request(routing_service_ip_port_pair_.first, routing_service_ip_port_pair_.second, wrapper_msg, AIOMessageType::NO_RESPONSE);
+    aio_->add_connect_request(routing_service_ip_port_pair_.first, routing_service_ip_port_pair_.second, wrapper_msg, AIOMessageType::NO_RESPONSE);
 
     // Broad cast to other servers in the same cluster
     for (int idx = 0; idx < SERVER_NUM_PER_CLUSTER; idx++) {
@@ -68,13 +68,13 @@ void AIOServer::broadcast_vote() {
 
 void AIOServer::broadcast_heart_beat() {
     std::printf("[%d:%d][LEADER:%d] Heart beat.\n", cluster_id_, server_id_, raft_state_->current_term_);
-    // // Send to routing service
-    // WrapperMessage* wrapper_msg = new WrapperMessage;
-    // AppendEntriesReq* req = wrapper_msg->mutable_appendentriesreq();
-    // req->set_term(raft_state_->current_term_);
-    // req->set_leaderid(server_id_);
+    // Send to routing service
+    WrapperMessage* wrapper_msg = new WrapperMessage;
+    AppendEntriesReq* req = wrapper_msg->mutable_appendentriesreq();
+    req->set_term(raft_state_->current_term_);
+    req->set_leaderid(server_id_);
 
-    // aio_->add_connect_request(routing_service_ip_port_pair_.first, routing_service_ip_port_pair_.second, wrapper_msg, AIOMessageType::NO_RESPONSE);
+    aio_->add_connect_request(routing_service_ip_port_pair_.first, routing_service_ip_port_pair_.second, wrapper_msg, AIOMessageType::NO_RESPONSE);
 
     // Broad cast to other servers in the same cluster
     raft_state_->coming_commit_index_ = (int)raft_state_->log_.size() - 1; // Set coming commit index
@@ -150,7 +150,9 @@ void AIOServer::run(int server_socket) {
         }
 
         if (cqe->res != -ETIME && cqe->res < 0) {
-            std::printf("[%d:%d] Error cqe->res: %d.\n", cluster_id_, server_id_, cqe->res); 
+            std::printf("[%d:%d][ERROR] cqe->res: %d.\n", cluster_id_, server_id_, cqe->res);
+            io_uring_cqe_seen(&(aio_->ring_), cqe);
+            continue;
         }
 
         AIOData* data = (AIOData*)io_uring_cqe_get_data(cqe);
@@ -160,19 +162,23 @@ void AIOServer::run(int server_socket) {
         }
         switch (data->event_type) {
             case AIOEventType::EVENT_TIMEOUT: { // Timeout event
-                std::printf("[%d:%d][EVENT] Timeout.\n", cluster_id_, server_id_); 
-                if (raft_state_->role_ == Role::FOLLOWER) { // Follower
-                    if (!raft_state_->heard_heart_beat_) { // Not heard heart beat, convert to candidate
+                if (pretend_fail_) {
+                    aio_->add_timeout_request(TERM_TIMEOUT_MS);
+                } else {
+                    std::printf("[%d:%d][EVENT] Timeout.\n", cluster_id_, server_id_); 
+                    if (raft_state_->role_ == Role::FOLLOWER) { // Follower
+                        if (!raft_state_->heard_heart_beat_) { // Not heard heart beat, convert to candidate
+                            broadcast_vote();
+                        }
+                        raft_state_->heard_heart_beat_ = false;
+                        aio_->add_timeout_request(TERM_TIMEOUT_MS);
+                    } else if (raft_state_->role_ == Role::CANDIDATE) { // Candidate
                         broadcast_vote();
+                        aio_->add_timeout_request(TERM_TIMEOUT_MS);
+                    } else { // Leader
+                        broadcast_heart_beat();
+                        aio_->add_timeout_request(HEAT_BEAT_INTERVAL_MS);
                     }
-                    raft_state_->heard_heart_beat_ = false;
-                    aio_->add_timeout_request(TERM_TIMEOUT_MS);
-                } else if (raft_state_->role_ == Role::CANDIDATE) { // Candidate
-                    broadcast_vote();
-                    aio_->add_timeout_request(TERM_TIMEOUT_MS);
-                } else { // Leader
-                    broadcast_heart_beat();
-                    aio_->add_timeout_request(HEAT_BEAT_INTERVAL_MS);
                 }
                 delete data;
                 break;

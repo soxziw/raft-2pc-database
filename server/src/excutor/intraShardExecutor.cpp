@@ -8,6 +8,7 @@
 
 void IntraShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const IntraShardReq& req) {
     // Data items in used or sender without enough balance
+    std::printf("[%d:%d][DETAIL] IntraShardReq: clusterId=%d, senderId=%d, receiverId=%d, amount=%d, id=%d\n", raft_state->cluster_id_, raft_state->server_id_, req.clusterid(), req.senderid(), req.receiverid(), req.amount(), req.id());
     if (raft_state->local_lock_[req.senderid()] || raft_state->local_lock_[req.receiverid()] || raft_state->local_balance_tb_[req.senderid()] < req.amount()) {
         std::printf("[%d:%d][IntraShardReq:%d] Data items in used or sender without enough balance.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);
         // Generate response
@@ -15,6 +16,7 @@ void IntraShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> 
         IntraShardRsp* rsp = wrapper_msg->mutable_intrashardrsp();
         rsp->set_result(IntraShardResultType::FAIL);
         rsp->set_id(req.id());
+        std::printf("[%d:%d][DETAIL] IntraShardRsp: result=%d, id=%d\n", raft_state->cluster_id_, raft_state->server_id_, rsp->result(), rsp->id());
         aio->add_write_request_msg(client_socket, wrapper_msg, AIOMessageType::NO_RESPONSE);
         return;
     }

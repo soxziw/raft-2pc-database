@@ -6,6 +6,7 @@
 
 void PrintBalanceExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const PrintBalanceReq& req) {
     // Generate response
+    std::printf("[%d:%d][DETAIL] PrintBalanceReq: clusterId=%d, serverId=%d, dataItemId=%d\n", raft_state->cluster_id_, raft_state->server_id_, req.clusterid(), req.serverid(), req.dataitemid());
     WrapperMessage* wrapper_msg = new WrapperMessage;
     PrintBalanceRsp* rsp = wrapper_msg->mutable_printbalancersp();
     rsp->set_clusterid(req.clusterid());
@@ -25,5 +26,6 @@ void PrintBalanceExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO
     
 
     // Send response back to client
+    std::printf("[%d:%d][DETAIL] PrintBalanceRsp: clusterId=%d, serverId=%d, dataitemId=%d, balance=%d\n", raft_state->cluster_id_, raft_state->server_id_, rsp->clusterid(), rsp->serverid(), rsp->dataitemid(), rsp->balance());
     aio->add_write_request_msg(client_socket, wrapper_msg, AIOMessageType::NO_RESPONSE);
 }
