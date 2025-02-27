@@ -122,15 +122,6 @@ class Client:
         for i in range(len(balance_res)):
             print(f"   clusterId: {balance_res[i][0]}, serverId: {balance_res[i][1]}, balance: ${balance_res[i][2]}")
             print('-'*30)
-
-    def print_leader(self):
-        """Print the leader of each cluster"""
-        print(f"Getting leader information from all clusters...")
-        print('-'*30)
-        leaders =  self.routing_service.leader_per_cluster
-        for i in range(len(leaders)):
-            print(f"   clusterId: {i}, leaderId: {leaders[i]}")
-            print('-'*30)
         
 
 
@@ -162,7 +153,7 @@ class Client:
         with open(os.path.abspath(intra_shard_file_path)) as file:
             for line in file:
                 try:
-                    sender, recipient, amount = line.strip("()").split(",")[0:]
+                    sender, recipient, amount = line.strip("()\n").split(", ")[0:]
                 except ValueError:
                     print('Invalid transfer command')
                     continue
@@ -179,13 +170,13 @@ class Client:
             if metric.latency_s is not None:
                 total_latency += metric.latency_s
                 requests_processed += 1
-        avg_latency = total_latency / requests_processed
-        avg_throughpput = requests_processed / total_latency
-        print(f"Total requests processed: {requests_processed}/{requests_processed}")
+        avg_latency = total_latency / requests_processed if requests_processed != 0 else 0
+        avg_throughpput = requests_processed / total_latency if total_latency != 0 else 0
+        print(f"Total requests processed: {requests_processed}/ 1000")
         print(f"Average latency of intra-shard transactions is : {avg_latency:.3f}s")
         print(f"Average throughput(Requests Per Second) of intra-shard transactions is : {avg_throughpput:.3f}rps")
         print('-'*30)
-        logging.info(f"Total requests processed: {requests_processed}/{requests_processed}")
+        logging.info(f"Total requests processed: {requests_processed}/{1000}")
         logging.info(f"Average latency of intra-shard transactions is : {avg_latency:.3f}s")
         logging.info(f"Average throughput(Requests Per Second) of intra-shard transactions is : {avg_throughpput:.3f}rps")
         logging.info('-'*30)
@@ -198,7 +189,7 @@ class Client:
         with open(os.path.abspath(cross_shard_file_path)) as file:
             for line in file:
                 try:
-                    sender, recipient, amount = line.strip("()").split(",")[0:]
+                    sender, recipient, amount = line.strip("()\n").split(", ")[0:]
                 except ValueError:
                     print('Invalid transfer command')
                     continue
@@ -215,13 +206,13 @@ class Client:
             if metric.latency_s is not None:
                 total_latency += metric.latency_s
                 requests_processed += 1
-        avg_latency = total_latency / requests_processed
-        avg_throughpput = requests_processed / total_latency
-        print(f"Total requests processed: {requests_processed}/{requests_processed}")
+        avg_latency = total_latency / requests_processed if requests_processed != 0 else 0
+        avg_throughpput = requests_processed / total_latency if total_latency != 0 else 0
+        print(f"Total requests processed: {requests_processed}/ 1000")
         print(f"Average latency of cross-shard transactions is : {avg_latency:.3f}s")
         print(f"Average throughput(Requests Per Second) of cross-shard transactions is : {avg_throughpput:.3f}rps")
         print('-'*30)
-        logging.info(f"Total requests processed: {requests_processed}/{requests_processed}")
+        logging.info(f"Total requests processed: {requests_processed}/ 1000")
         logging.info(f"Average latency of cross-shard transactions is : {avg_latency:.3f}s")
         logging.info(f"Average throughput(Requests Per Second) of cross-shard transactions is : {avg_throughpput:.3f}rps")
         logging.info('-'*30)
@@ -235,7 +226,7 @@ class Client:
         with open(os.path.abspath(intra_cross_shard_file_path)) as file:
             for line in file:
                 try:
-                    sender, recipient, amount = line.strip("()").split(",")[0:]
+                    sender, recipient, amount = line.strip("()\n").split(", ")[0:]
                 except ValueError:
                     print('Invalid transfer command')
                     continue
@@ -256,13 +247,14 @@ class Client:
             if metric.latency_s is not None:
                 total_latency += metric.latency_s
                 requests_processed += 1
-        avg_latency = total_latency / requests_processed
-        avg_throughpput = requests_processed / total_latency
-        print(f"Total requests processed: {requests_processed}/{requests_processed}")
+
+        avg_latency = total_latency / requests_processed if requests_processed != 0 else 0
+        avg_throughpput = requests_processed / total_latency if total_latency != 0 else 0
+        print(f"Total requests processed: {requests_processed}/ 1000")
         print(f"Average latency of intra-shard and cross-shard transactions is : {avg_latency:.3f}s")
         print(f"Average throughput(Requests Per Second) of intra-shard and cross-shard transaction is : {avg_throughpput:.3f}rps")
         print('-'*30)
-        logging.info(f"Total requests processed: {requests_processed}/{requests_processed}")
+        logging.info(f"Total requests processed: {requests_processed}/ 1000")
         logging.info(f"Average latency of intra-shard and cross-shard transactions is : {avg_latency:.3f}s")
         logging.info(f"Average throughput(Requests Per Second) of intra-shard and cross-shard transaction is : {avg_throughpput:.3f}rps")
         logging.info('-'*30)
