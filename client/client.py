@@ -122,6 +122,15 @@ class Client:
         for i in range(len(balance_res)):
             print(f"   clusterId: {balance_res[i][0]}, serverId: {balance_res[i][1]}, balance: ${balance_res[i][2]}")
             print('-'*30)
+
+    def print_leader(self):
+        """Print the leader of each cluster"""
+        print(f"Getting leader information from all clusters...")
+        print('-'*30)
+        leaders =  self.routing_service.leader_per_cluster
+        for i in range(len(leaders)):
+            print(f"   clusterId: {i}, leaderId: {leaders[i]}")
+            print('-'*30)
         
 
 
