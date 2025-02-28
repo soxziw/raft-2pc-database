@@ -149,7 +149,7 @@ int main(int argc, char* argv[]) {
             } else if (pid > 0) {
                 // Parent process: store child pid
                 server_pids.push_back(pid);
-                sleep(1);
+                usleep(100000);
             } else {
                 std::printf("[Error] Fork failed\n");
                 return 1;
