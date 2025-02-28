@@ -5,7 +5,7 @@ from datetime import datetime
 from config  import LocalConfig
 
 
-HANDLE_REQUEST_TIME_DELAY = 3
+HANDLE_REQUEST_TIME_DELAY = 10
 CLIENT_TIMEOUT = 10
 BUFFER_SIZE = 1024
 DEFAULT_BALANCE = 10.0
