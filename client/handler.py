@@ -12,25 +12,28 @@ from serializers.printDatastoreReq import printDatastoreReqSerializer
 from serializers.printDatastoreRsp import printDatastoreRspSerializer
 from serializers.Stop import StopSerializer
 from serializers.Resume import ResumeSerializer
-
+import time
 from config import LocalConfig
 
 
 class TransactionHandler:
 
     @classmethod
-    def transfer(cls, sender_id: int, recipient_id: int, amount: int):
+    async def transfer(cls, sender_id: int, recipient_id: int, amount: int):
         """Handling a new transfer transaction"""
         sender_cluser_id = LocalConfig.get_cluster_id_for_user(sender_id)
         recipient_cluser_id = LocalConfig.get_cluster_id_for_user(recipient_id)
+        start = time.time()
         if sender_cluser_id == recipient_cluser_id:
-            cls.send_intra_shard_transaction_to_routingservice(sender_cluser_id, sender_id, recipient_id, amount)
+            await cls.send_intra_shard_transaction_to_routingservice(sender_cluser_id, sender_id, recipient_id, amount)
         else:
-            cls.send_cross_shard_transaction_to_routingservice(sender_cluser_id, recipient_cluser_id, sender_id, recipient_id, amount)
+            await cls.send_cross_shard_transaction_to_routingservice(sender_cluser_id, recipient_cluser_id, sender_id, recipient_id, amount)
+        end = time.time()
+        return end - start
 
     
     @classmethod
-    def send_intra_shard_transaction_to_routingservice(cls, cluster_id: int, sender_id: int, recipient_id: int, amount: int):
+    async def send_intra_shard_transaction_to_routingservice(cls, cluster_id: int, sender_id: int, recipient_id: int, amount: int):
         """Sending a intra-shard transaction request to the routing service"""
 
         message = IntraShardReqSerializer.to_str(clusterId=cluster_id, senderId=sender_id, receiverId=recipient_id, amount=amount, id=1)
@@ -38,7 +41,7 @@ class TransactionHandler:
         ip, port = LocalConfig.routing_service_ip_port
         print(f"Sending intra-shard transaction [clusterId={cluster_id}] request to routing service {ip}:{port}...")
 
-        utils.send_message(ip, port, message, with_response=False)
+        await utils.send_message_async(ip, port, message, with_response=True)
         # intra_shard_response = IntraShardRspSerializer.parse(response)
         # if intra_shard_response.result == IntraShardResultType.SUCCESS:
         #     print(f"Transaction SUCCESS: user {sender_id} has transferred ${amount} to {recipient_id}")
@@ -50,14 +53,14 @@ class TransactionHandler:
 
 
     @classmethod
-    def send_cross_shard_transaction_to_routingservice(cls, sender_cluser_id: int, recipient_cluser_id: int, sender_id: int, recipient_id: int, amount: int):
+    async def send_cross_shard_transaction_to_routingservice(cls, sender_cluser_id: int, recipient_cluser_id: int, sender_id: int, recipient_id: int, amount: int):
         """Sending a cross-shard transaction request to the routing service"""
         message = CrossShardReqSerializer.to_str(0, sender_cluser_id, recipient_cluser_id, sender_id, recipient_id, amount, 0)
         ip, port = LocalConfig.routing_service_ip_port
         
         print(f"Sending cross-shard transaction request[senderClusterId={sender_cluser_id}, receiverClusterId={recipient_cluser_id}] to routing service {ip}:{port}...")
 
-        utils.send_message(ip, port, message, with_response=False)
+        await utils.send_message_async(ip, port, message, with_response=True)
         # cross_shard_response = CrossShardRspSerializer.parse(response)
         # if cross_shard_response.result == CrossShardResultType.SUCCESS:
         #     print(f"Transaction SUCCESS: user {sender_id} has transferred ${amount} to {recipient_id}")

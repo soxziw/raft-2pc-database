@@ -53,10 +53,10 @@ class RoutingService:
         self.transaction_request = [[] for _ in range(self.num_cluster)]
 
         # store the latency of the intra-shard transaction request
-        self.latency_for_intra = []
+        self.conn_for_intra = []
 
         # store the latency of the cross-shard transaction request
-        self.latency_for_cross = []
+        self.conn_for_cross = []
 
     def start(self):
         """Start the routing service asynchronously in a new thread."""
@@ -84,14 +84,14 @@ class RoutingService:
 
         try:
             request_message = await reader.read(utils.BUFFER_SIZE)
-            print(f"[{time.strftime('%H:%M:%S')}] Received request message")
+            #print(f"[{time.strftime('%H:%M:%S')}] Received request message")
             await self.handle_request(request_message, writer)
-            print(f"[{time.strftime('%H:%M:%S')}] Finished handling request")
+            #print(f"[{time.strftime('%H:%M:%S')}] Finished handling request")
         except Exception as e:
             print(f"Error handling connection: {e}")
-        finally:
-            writer.close()
-            await writer.wait_closed()
+        # finally:
+        #     writer.close()
+        #     await writer.wait_closed()
 
     async def handle_request(self, request_message: bytes, writer):
         """Handle incoming requests asynchronously."""
@@ -115,10 +115,20 @@ class RoutingService:
                 for request in pending_requests[:]:  # Create copy to iterate
                     wrapper.ParseFromString(request)
                     if wrapper.HasField("intraShardReq"):
-                        await self.redirect_intra_shard_request_to_server(request)
+                        intra_shard_req = wrapper.intraShardReq
+                        response = await self.redirect_intra_shard_request_to_server(request)
+                        conn = self.conn_for_intra[intra_shard_req.id - 1]
+                        conn.write(response)
+                        await conn.drain()  # Ensure the data is sent before closing the connection
+                        conn.close()
+                        await conn.wait_closed()
+
                     elif wrapper.HasField("crossShardReq"):
                         await self.redirect_cross_shard_request_to_server(request, cluster_id)
                     pending_requests.remove(request)
+
+            writer.close()
+            await writer.wait_closed()
 
         elif wrapper.HasField("requestVoteReq"):
             request_vote_req = wrapper.requestVoteReq
@@ -129,10 +139,12 @@ class RoutingService:
                 print(f"Updating leader for cluster {cluster_id} to -1...")
             self.leader_per_cluster[cluster_id] = -1
 
+            writer.close()
+            await writer.wait_closed()
+
         elif wrapper.HasField("intraShardReq"):
             intra_shard_req = wrapper.intraShardReq
-            cur = len(self.latency_for_intra)
-            self.latency_for_intra.append(PerformanceMetricPerRequest(len(request_message)))
+            cur = len(self.conn_for_intra)
             
             print(f"Routing service received intraShardReq from client...")
             message_with_id = IntraShardReqSerializer.to_str(
@@ -142,18 +154,29 @@ class RoutingService:
                 amount=intra_shard_req.amount,
                 id=cur + 1
             )
+            #self.latency_for_intra.append(PerformanceMetricPerRequest(len(request_message)))
 
             if self.leader_per_cluster[intra_shard_req.clusterId] == -1:
                 print(f"No leader for cluster {intra_shard_req.clusterId}, putting request in the queue...")
+                self.conn_for_intra.append(writer)
                 self.transaction_request[intra_shard_req.clusterId].append(message_with_id)
+                # response = "hello".encode()
+                # writer.write(response)
+                # await writer.drain()  # Ensure the data is sent before closing the connection
+                # writer.close()
+                # await writer.wait_closed()
+                
             else:
-                await self.redirect_intra_shard_request_to_server(message_with_id)
+                response = await self.redirect_intra_shard_request_to_server(message_with_id)
+                writer.write(response)
+                await writer.drain()  # Ensure the data is sent before closing the connection
+                writer.close()
+                await writer.wait_closed()
+                # await self.redirect_intra_shard_request_to_server(message_with_id)
 
         elif wrapper.HasField("crossShardReq"):
             cross_shard_req = wrapper.crossShardReq
             cur = len(self.num_reply_for_2PC)
-            self.num_reply_for_2PC.append(0)
-            self.latency_for_cross.append(PerformanceMetricPerRequest(len(request_message)))
             
             print(f"Routing service received crossShardReq from client...")
             message_with_id = CrossShardReqSerializer.to_str(
@@ -166,6 +189,9 @@ class RoutingService:
                 cur + 1
             )
 
+            self.num_reply_for_2PC.append(0)
+            #self.latency_for_cross.append(PerformanceMetricPerRequest(len(request_message)))
+            self.conn_for_cross.append(writer)
             sender_has_leader = self.leader_per_cluster[cross_shard_req.senderClusterId] != -1
             receiver_has_leader = self.leader_per_cluster[cross_shard_req.receiverClusterId] != -1
 
@@ -193,6 +219,7 @@ class RoutingService:
         
         print(f"Routingservice redirecting intra-shard transaction request[user {intra_shard_req.senderId} transfers to user {intra_shard_req.receiverId} ${intra_shard_req.amount}] to cluster {intra_shard_req.clusterId}, leader is server {leader_id}[{ip}:{port}]...")
         
+        response = None
         response = await utils.send_message_async(ip, port, request_message, with_response=True)
 
         intra_shard_response = IntraShardRspSerializer.parse(response)
@@ -201,7 +228,8 @@ class RoutingService:
         else:
             print(f"Transaction FAILED")
         
-        self.latency_for_intra[intra_shard_response.id - 1].calculate_latency_and_throughput()
+        #self.latency_for_intra[intra_shard_response.id - 1].calculate_latency_and_throughput()
+        return response
 
 
     async def redirect_cross_shard_request_to_server(self, request_message: bytes, cluster_id: int):
@@ -271,8 +299,14 @@ class RoutingService:
             await utils.send_message_async(ip, port, message_commited, with_response=False)
             ip, port = LocalConfig.server_ip_port_list[receiver_cluster_id][i]
             await utils.send_message_async(ip, port, message_commited, with_response=False)
+
         print("Transaction SUCCEED")
-        self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()
+        #self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()
+        writer = self.conn_for_cross[cross_shard_req.id - 1]
+        writer.write("Transaction SUCCEED".encode())
+        await writer.drain()  # Ensure the data is sent before closing the connection
+        writer.close()
+        await writer.wait_closed()
 
 
     async def broadcast_abort_message(self, request_message: bytes):
@@ -289,4 +323,10 @@ class RoutingService:
             await utils.send_message_async(ip, port, message_aborted, with_response=False)
             ip, port = LocalConfig.server_ip_port_list[receiver_cluster_id][i]
             await utils.send_message_async(ip, port, message_aborted, with_response=False)
-        self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()
+
+        #self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()
+        writer = self.conn_for_cross[cross_shard_req.id - 1]
+        writer.write("Transaction SUCCEED".encode())
+        await writer.drain()  # Ensure the data is sent before closing the connection
+        writer.close()
+        await writer.wait_closed()
