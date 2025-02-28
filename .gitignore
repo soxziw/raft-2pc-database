@@ -1,5 +1,6 @@
 # Build result
 build/*
+load_test.log
 
 # Prerequisites
 *.d
