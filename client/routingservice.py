@@ -102,9 +102,11 @@ class RoutingService:
             append_entries_req = wrapper.appendEntriesReq
             server_id = append_entries_req.leaderId
             cluster_id = LocalConfig.get_cluster_id_for_server(server_id)
+            # no leader for this cluster before
+            if self.leader_per_cluster[cluster_id] == -1:
+                print(f"Routing service received AppendEntriesReq from server {server_id}...")
+                print(f"Updating leader for cluster {cluster_id} to server {server_id}...")
             self.leader_per_cluster[cluster_id] = server_id
-            print(f"Routing service received AppendEntriesReq from server {server_id}...")
-            print(f"Updating leader for cluster {cluster_id} to server {server_id}...")
             
             # Execute pending requests
             pending_requests = self.transaction_request[cluster_id]
@@ -122,8 +124,9 @@ class RoutingService:
             request_vote_req = wrapper.requestVoteReq
             server_id = request_vote_req.candidateId
             cluster_id = LocalConfig.get_cluster_id_for_server(server_id)
-            print(f"Routing service received requestVoteReq from server {server_id}...")
-            print(f"Updating leader for cluster {cluster_id} to -1...")
+            if self.leader_per_cluster[cluster_id] != -1:
+                print(f"Routing service received requestVoteReq from server {server_id}...")
+                print(f"Updating leader for cluster {cluster_id} to -1...")
             self.leader_per_cluster[cluster_id] = -1
 
         elif wrapper.HasField("intraShardReq"):
