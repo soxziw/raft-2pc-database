@@ -78,7 +78,7 @@ if(BUILD_CLIENT)
     # add_custom_target(generate_python_proto ALL DEPENDS python_proto)
 
     # Make 2PCClient depend on Python proto generation
-    add_dependencies(2PCClient generate_python_proto)
+    # add_dependencies(2PCClient generate_python_proto)
 
     # Custom build target for creating 2PCClient executables
     add_custom_target(client
