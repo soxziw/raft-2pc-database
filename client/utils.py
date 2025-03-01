@@ -53,6 +53,7 @@ def send_message(hostname: str, port: int, message: bytes, with_response=True) -
     
 
 
+
 async def send_message_async(hostname: str, port: int, message: bytes, with_response=True) -> bytes:
     """Using TCP for asynchronous message passing."""
     response = None
@@ -66,7 +67,34 @@ async def send_message_async(hostname: str, port: int, message: bytes, with_resp
 
         if with_response:
             try:
-                response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=50)
+                response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=20)
+            except asyncio.TimeoutError:
+                raise TimeoutError("Socket timeout while receiving response")
+                # print("Socket timeout while receiving response")
+
+        writer.close()
+        await writer.wait_closed()
+
+    except asyncio.TimeoutError:
+        raise TimeoutError("Socket timeout while connecting")
+        # print("Socket timeout while receiving response")
+    
+    return response
+
+async def send_message_to_raft_async(hostname: str, port: int, message: bytes, with_response=True) -> bytes:
+    """Using TCP for asynchronous message passing."""
+    response = None
+    try:
+        print(f"sending {message} to {hostname}:{port}...")
+        
+        reader, writer = await asyncio.open_connection(hostname, port)
+
+        writer.write(message)
+        await writer.drain()  # Ensure the message is sent before proceeding
+
+        if with_response:
+            try:
+                response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=30)
             except asyncio.TimeoutError:
                 raise TimeoutError("Socket timeout while receiving response")
                 # print("Socket timeout while receiving response")
