@@ -48,9 +48,9 @@ class TransactionHandler:
         response = await utils.send_message_async(ip, port, message, with_response=True)
         intra_shard_response = IntraShardRspSerializer.parse(response)
         if intra_shard_response.result == IntraShardResultType.SUCCESS:
-            print(f"Transaction SUCCEED: user {sender_id} has transferred ${amount} to {recipient_id}")
+            print(f"\033[32mTransaction SUCCEED: user {sender_id} has transferred ${amount} to {recipient_id}\033[0m")
         else:
-            print(f"Transaction FAILED")
+            print(f"\033[31mTransaction FAILED\033[0m")
 
 
 
@@ -67,9 +67,9 @@ class TransactionHandler:
         cross_shard_response = await utils.send_message_async(ip, port, message, with_response=True)
 
         if cross_shard_response and cross_shard_response.decode() == "Transaction SUCCEED":
-            print(f"Transaction SUCCEED: user {sender_id} has transferred ${amount} to {recipient_id}")
+            print(f"\033[32mTransaction SUCCEED: user {sender_id} has transferred ${amount} to {recipient_id}\033[0m")
         else:
-            print(f"Transaction FAILED")
+            print(f"\033[31mTransaction FAILED\033[0m")
         
 
     @classmethod

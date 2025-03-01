@@ -4,10 +4,10 @@ import aiofiles
 import utils
 import re, os
 from handler import TransactionHandler
-from routingservice import RoutingService
 import asyncio
 from config import LocalConfig
 import logging
+import threading
 
 
 # Configure logging
@@ -25,8 +25,7 @@ class Client:
     def __init__(self):
         # self.client_id = client_id
         self.create_time = utils.get_current_time()
-        ip, port = LocalConfig.routing_service_ip_port
-        self.routing_service = RoutingService(ip,port)
+        
     
 
     def __repr__(self):
@@ -34,6 +33,7 @@ class Client:
     
 
     def prompt(self):
+        tasks = []
         self.help()
         """User interacting interface for intra-shard and cross-shard transaction"""
         while True:
@@ -47,7 +47,9 @@ class Client:
                 except ValueError:
                     print('Invalid transfer command')
                     continue
-                asyncio.run(self.create_single_transfer(int(sender), int(recipient), int(amount)))
+                thread = threading.Thread(target=lambda: asyncio.run(self.create_single_transfer(int(sender), int(recipient), int(amount))))
+                thread.daemon = True
+                thread.start()
                 
             elif re.match(r'^(balance|b)\s+\d+(\.\d+)?$', cmd):
                 try:
@@ -79,6 +81,7 @@ class Client:
                     continue
                 self.resume_server(int(server_id))
             else:
+                
                 print('Invalid command, please re-enter')
             print()
 
@@ -126,16 +129,6 @@ class Client:
             print(f"   clusterId: {balance_res[i][0]}, serverId: {balance_res[i][1]}, balance: ${balance_res[i][2]}")
             print('-'*30)
 
-    def print_leader(self):
-        """Print the leader of each cluster"""
-        print(f"Getting leader information from all clusters...")
-        print('-'*30)
-        leaders =  self.routing_service.leader_per_cluster
-        for i in range(len(leaders)):
-            print(f"   clusterId: {i}, leaderId: {leaders[i]}")
-            print('-'*30)
-        
-
 
     def print_data_store(self):
         """Print the committed transactions on all servers"""
@@ -151,36 +144,6 @@ class Client:
 
 
     async def start_load_test(self, file_path):
-        # self.routing_service.latency_for_intra = []
-        # with open(os.path.abspath(intra_shard_file_path)) as file:
-        #     for line in file:
-        #         try:
-        #             sender, recipient, amount = line.strip("()\n").split(", ")[0:]
-        #         except ValueError:
-        #             print('Invalid transfer command')
-        #             continue
-        #         self.create_single_transfer(int(sender), int(recipient), int(amount))
-        # time.sleep(utils.HANDLE_REQUEST_TIME_DELAY)
-        # print(f"Calculating latency and throughput for all intra-shard transactions...")
-        # print('-'*30)
-        # logging.info(f"Calculating latency and throughput for all intra-shard transactions...")
-        # logging.info('-'*30)
-        # total_latency = 0
-        # requests_processed = 0
-        # for metric in self.routing_service.latency_for_intra:
-        #     if metric.latency_s is not None:
-        #         total_latency += metric.latency_s
-        #         requests_processed += 1
-        # avg_latency = total_latency / requests_processed if requests_processed != 0 else 0
-        # avg_throughpput = requests_processed / total_latency if total_latency != 0 else 0
-        # print(f"Total requests processed: {requests_processed}/ 1000")
-        # print(f"Average latency of intra-shard transactions is : {avg_latency:.3f}s")
-        # print(f"Average throughput(Requests Per Second) of intra-shard transactions is : {avg_throughpput:.3f}rps")
-        # print('-'*30)
-        # logging.info(f"Total requests processed: {requests_processed}/{1000}")
-        # logging.info(f"Average latency of intra-shard transactions is : {avg_latency:.3f}s")
-        # logging.info(f"Average throughput(Requests Per Second) of intra-shard transactions is : {avg_throughpput:.3f}rps")
-        # logging.info('-'*30)
 
         tasks = []
         async with aiofiles.open(os.path.abspath(file_path), mode='r') as file:
@@ -235,18 +198,18 @@ class Client:
 
         await self.start_load_test(cross_shard_file_path)
 
-        phase1_latencies = 0
-        phase2_latencies = 0
-        num_requests = len(self.routing_service.latency_phase1)
-        for id, latency in self.routing_service.latency_phase1.items():
-            phase1_latencies += latency
-        for id, latency in self.routing_service.latency_phase2.items():
-            phase2_latencies += latency
+        # phase1_latencies = 0
+        # phase2_latencies = 0
+        # num_requests = len(self.routing_service.latency_phase1)
+        # for id, latency in self.routing_service.latency_phase1.items():
+        #     phase1_latencies += latency
+        # for id, latency in self.routing_service.latency_phase2.items():
+        #     phase2_latencies += latency
 
-        avg_latency_phase1 = phase1_latencies / num_requests if num_requests > 0 else 0
-        avg_latency_phase2 = phase2_latencies / num_requests if num_requests > 0 else 0
-        print(f"Phase1 Average Latency: {avg_latency_phase1:.4f} seconds")
-        print(f"Phase2 Average Latency: {avg_latency_phase2:.4f} seconds")
+        # avg_latency_phase1 = phase1_latencies / num_requests if num_requests > 0 else 0
+        # avg_latency_phase2 = phase2_latencies / num_requests if num_requests > 0 else 0
+        # print(f"Phase1 Average Latency: {avg_latency_phase1:.4f} seconds")
+        # print(f"Phase2 Average Latency: {avg_latency_phase2:.4f} seconds")
 
         print("Start load testing for intra-shard and cross-shard transactions...")
         logging.info("Start load testing for intra-shard and cross-shard transactions...")
@@ -272,9 +235,6 @@ class Client:
 if __name__ == "__main__":
         
         client = Client()
-
-        # start the routing service
-        client.routing_service.start()
         
         # start user interaction
         client.prompt()
