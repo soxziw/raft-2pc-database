@@ -1,0 +1,3 @@
+// Concurrent independent cross-shard transactions
+(1, 1001, 1)
+(2, 1002, 1)
