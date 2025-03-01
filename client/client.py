@@ -63,7 +63,7 @@ class Client:
             elif re.match(r'performance|p', cmd):
                 asyncio.run(self.print_performance())
                 # import threading
-                # thread = threading.Thread(target=lambda: asyncio.run(self.start_load_test()))
+                # thread = threading.Thread(target=lambda: asyncio.run(self.start_test()))
                 # thread.daemon = True
                 # thread.start()
             elif re.match(r'stop|s', cmd):
@@ -80,8 +80,15 @@ class Client:
                     print('Invalid balance command')
                     continue
                 self.resume_server(int(server_id))
+            elif re.match(r'^test_\w+$', cmd):
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                test_path = os.path.join(script_dir, f"test/{cmd}.txt")
+                if os.path.exists(test_path):
+                    print(f"Running test file: {test_path}")
+                    asyncio.run(self.start_test(test_path, is_load_test=False))
+                else:
+                    print(f"Test file {test_path} not found")
             else:
-                
                 print('Invalid command, please re-enter')
             print()
 
@@ -97,7 +104,14 @@ class Client:
         print('  4. stop <server_id> (or s): stop the designated server')
         print('  5. resume <server_id> (or r): resume the designated server')
         print('  6. performance (or p): print the throughput and latency of the transaction')
-        print('  7. exit (or quit, q): exit the client interface')
+        print('  7. test_TEST_CASE_NAME: run given test cases')
+        print('     Available tests:')
+        print('     - test_concurrent_intra_shard_different_clusters: Run concurrent independent intra-shard transactions in different clusters')
+        print('     - test_concurrent_cross_shard: Run concurrent independent cross-shard transactions')
+        print('     - test_concurrent_mixed_intra_cross_shard: Run concurrent intra-shard and cross-shard transactions')
+        print('     - test_concurrent_conflicting_transactions: Run concurrent transactions accessing the same data items')
+        print('     - test_abort_handling_no_commit: Test that no commitment occurs if any cluster aborts')
+        print('  8. exit (or quit, q): exit the client interface')
         print('Please enter a command:')
 
 
@@ -143,7 +157,7 @@ class Client:
             print('-'*30)
 
 
-    async def start_load_test(self, file_path):
+    async def start_test(self, file_path, is_load_test:bool):
 
         tasks = []
         async with aiofiles.open(os.path.abspath(file_path), mode='r') as file:
@@ -159,26 +173,27 @@ class Client:
         latencies = await asyncio.gather(*tasks)  # Execute all requests concurrently
         end_time = time.time()  # Record global end time
 
-        total_time = end_time - start_time
-        num_requests = len(latencies)
-        avg_latency = sum(latencies) / num_requests if num_requests > 0 else 0
-        throughput = num_requests / total_time if total_time > 0 else 0
+        if (is_load_test):
+            total_time = end_time - start_time
+            num_requests = len(latencies)
+            avg_latency = sum(latencies) / num_requests if num_requests > 0 else 0
+            throughput = num_requests / total_time if total_time > 0 else 0
 
-        print(f"Load Testing Completed:")
-        print('-'*30)
-        print(f"Total Requests: {num_requests}")
-        print(f"Total Time: {total_time:.2f} seconds")
-        print(f"Throughput: {throughput:.2f} requests per second")
-        print(f"Average Latency: {avg_latency:.4f} seconds")
-        print('-'*30)
+            print(f"Load Testing Completed:")
+            print('-'*30)
+            print(f"Total Requests: {num_requests}")
+            print(f"Total Time: {total_time:.2f} seconds")
+            print(f"Throughput: {throughput:.2f} requests per second")
+            print(f"Average Latency: {avg_latency:.4f} seconds")
+            print('-'*30)
 
-        logging.info(f"Load Testing Completed:")
-        logging.info('-'*30)
-        logging.info(f"Total Requests: {num_requests}")
-        logging.info(f"Total Time: {total_time:.2f} seconds")
-        logging.info(f"Throughput: {throughput:.2f} requests per second")
-        logging.info(f"Average Latency: {avg_latency:.4f} seconds")
-        logging.info('-'*30)
+            logging.info(f"Load Testing Completed:")
+            logging.info('-'*30)
+            logging.info(f"Total Requests: {num_requests}")
+            logging.info(f"Total Time: {total_time:.2f} seconds")
+            logging.info(f"Throughput: {throughput:.2f} requests per second")
+            logging.info(f"Average Latency: {avg_latency:.4f} seconds")
+            logging.info('-'*30)
 
 
         
@@ -191,12 +206,12 @@ class Client:
 
         print("Start load testing for intra-shard transactions...")
         logging.info("Start load testing for intra-shard transactions...")
-        await self.start_load_test(intra_shard_file_path)
+        await self.start_test(intra_shard_file_path, is_load_test=True)
 
         print("Start load testing for cross-shard transactions...")
         logging.info("Start load testing for cross-shard transactions...")
 
-        await self.start_load_test(cross_shard_file_path)
+        await self.start_test(cross_shard_file_path, is_load_test=True)
 
         # phase1_latencies = 0
         # phase2_latencies = 0
@@ -213,7 +228,7 @@ class Client:
 
         print("Start load testing for intra-shard and cross-shard transactions...")
         logging.info("Start load testing for intra-shard and cross-shard transactions...")
-        await self.start_load_test(intra_cross_shard_file_path)
+        await self.start_test(intra_cross_shard_file_path, is_load_test=True)
 
 
     def stop_server(self, server_id):
