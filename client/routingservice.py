@@ -232,7 +232,7 @@ class RoutingService:
         # if intra_shard_response.result == IntraShardResultType.SUCCESS:
         #     print(f"\033[32mTransaction SUCCEED: user {intra_shard_req.senderId} has transferred ${intra_shard_req.amount} to {intra_shard_req.receiverId}\033[0m")
         # else:
-        #     print(f"\033[31mTransaction FAILED\033[0m")
+        #     print(f"\033[31mTransaction FAILED: user {intra_shard_req.senderId} fails to transfer ${intra_shard_req.amount} to {intra_shard_req.receiverId}\033[0m")
         
         #self.latency_for_intra[intra_shard_response.id - 1].calculate_latency_and_throughput()
         return response

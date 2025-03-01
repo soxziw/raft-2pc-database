@@ -50,7 +50,7 @@ class TransactionHandler:
         if intra_shard_response.result == IntraShardResultType.SUCCESS:
             print(f"\033[32mTransaction SUCCEED: user {sender_id} has transferred ${amount} to {recipient_id}\033[0m")
         else:
-            print(f"\033[31mTransaction FAILED\033[0m")
+            print(f"\033[31mTransaction FAILED: user {sender_id} fails to transfer ${amount} to {recipient_id}\033[0m")
 
 
 
@@ -69,7 +69,7 @@ class TransactionHandler:
         if cross_shard_response and cross_shard_response.decode() == "Transaction SUCCEED":
             print(f"\033[32mTransaction SUCCEED: user {sender_id} has transferred ${amount} to {recipient_id}\033[0m")
         else:
-            print(f"\033[31mTransaction FAILED\033[0m")
+            print(f"\033[31mTransaction FAILED: user {sender_id} fails to transfer ${amount} to {recipient_id}\033[0m")
         
 
     @classmethod
