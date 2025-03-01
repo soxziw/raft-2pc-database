@@ -46,17 +46,18 @@ class RoutingService:
         # store the leader of each cluster known via heartbeat
         self.leader_per_cluster = [-1] * self.num_cluster
 
+        self.transaction_id = 0
         # track the number of "YES" in 2PC Commit/Abort phase
-        self.num_reply_for_2PC = []
+        self.num_reply_for_2PC = {}
 
         # store the request in queue when no leader is elected for that cluster
         self.transaction_request = [[] for _ in range(self.num_cluster)]
 
         # store the latency of the intra-shard transaction request
-        self.conn_for_intra = []
+        self.conn_for_intra = {}
 
         # store the latency of the cross-shard transaction request
-        self.conn_for_cross = []
+        self.conn_for_cross = {}
 
     def start(self):
         """Start the routing service asynchronously in a new thread."""
@@ -80,7 +81,7 @@ class RoutingService:
     async def handle_connection(self, reader, writer):
         """Handle incoming connection asynchronously"""
         addr = writer.get_extra_info("peername")
-        print(f"[{time.strftime('%H:%M:%S')}] Accepted connection from {addr}")
+        # print(f"[{time.strftime('%H:%M:%S')}] Accepted connection from {addr}")
 
         try:
             request_message = await reader.read(utils.BUFFER_SIZE)
@@ -117,7 +118,7 @@ class RoutingService:
                     if wrapper.HasField("intraShardReq"):
                         intra_shard_req = wrapper.intraShardReq
                         response = await self.redirect_intra_shard_request_to_server(request)
-                        conn = self.conn_for_intra[intra_shard_req.id - 1]
+                        conn = self.conn_for_intra[intra_shard_req.id]
                         conn.write(response)
                         await conn.drain()  # Ensure the data is sent before closing the connection
                         conn.close()
@@ -144,7 +145,7 @@ class RoutingService:
 
         elif wrapper.HasField("intraShardReq"):
             intra_shard_req = wrapper.intraShardReq
-            cur = len(self.conn_for_intra)
+            self.transaction_id += 1
             
             print(f"Routing service received intraShardReq from client...")
             message_with_id = IntraShardReqSerializer.to_str(
@@ -152,13 +153,13 @@ class RoutingService:
                 senderId=intra_shard_req.senderId,
                 receiverId=intra_shard_req.receiverId,
                 amount=intra_shard_req.amount,
-                id=cur + 1
+                id=self.transaction_id
             )
             #self.latency_for_intra.append(PerformanceMetricPerRequest(len(request_message)))
 
             if self.leader_per_cluster[intra_shard_req.clusterId] == -1:
                 print(f"No leader for cluster {intra_shard_req.clusterId}, putting request in the queue...")
-                self.conn_for_intra.append(writer)
+                self.conn_for_intra[self.transaction_id] = writer
                 self.transaction_request[intra_shard_req.clusterId].append(message_with_id)
                 # response = "hello".encode()
                 # writer.write(response)
@@ -168,6 +169,7 @@ class RoutingService:
                 
             else:
                 response = await self.redirect_intra_shard_request_to_server(message_with_id)
+                #response = "hello".encode()
                 writer.write(response)
                 await writer.drain()  # Ensure the data is sent before closing the connection
                 writer.close()
@@ -176,7 +178,7 @@ class RoutingService:
 
         elif wrapper.HasField("crossShardReq"):
             cross_shard_req = wrapper.crossShardReq
-            cur = len(self.num_reply_for_2PC)
+            self.transaction_id += 1
             
             print(f"Routing service received crossShardReq from client...")
             message_with_id = CrossShardReqSerializer.to_str(
@@ -186,12 +188,12 @@ class RoutingService:
                 cross_shard_req.senderId,
                 cross_shard_req.receiverId,
                 cross_shard_req.amount,
-                cur + 1
+                self.transaction_id
             )
 
-            self.num_reply_for_2PC.append(0)
+            self.num_reply_for_2PC[self.transaction_id] = 0
             #self.latency_for_cross.append(PerformanceMetricPerRequest(len(request_message)))
-            self.conn_for_cross.append(writer)
+            self.conn_for_cross[self.transaction_id] = writer
             sender_has_leader = self.leader_per_cluster[cross_shard_req.senderClusterId] != -1
             receiver_has_leader = self.leader_per_cluster[cross_shard_req.receiverClusterId] != -1
 
@@ -222,11 +224,11 @@ class RoutingService:
         response = None
         response = await utils.send_message_async(ip, port, request_message, with_response=True)
 
-        intra_shard_response = IntraShardRspSerializer.parse(response)
-        if intra_shard_response.result == IntraShardResultType.SUCCESS:
-            print(f"Transaction SUCCEED: user {intra_shard_req.senderId} has transferred ${intra_shard_req.amount} to {intra_shard_req.receiverId}")
-        else:
-            print(f"Transaction FAILED")
+        # intra_shard_response = IntraShardRspSerializer.parse(response)
+        # if intra_shard_response.result == IntraShardResultType.SUCCESS:
+        #     print(f"Transaction SUCCEED: user {intra_shard_req.senderId} has transferred ${intra_shard_req.amount} to {intra_shard_req.receiverId}")
+        # else:
+        #     print(f"Transaction FAILED")
         
         #self.latency_for_intra[intra_shard_response.id - 1].calculate_latency_and_throughput()
         return response
@@ -245,42 +247,40 @@ class RoutingService:
         print(f"Routingservice redirecting cross-shard transaction request[user {cross_shard_req.senderId} transfers to user {cross_shard_req.receiverId}\
                ${cross_shard_req.amount}] to cluser {cluster_id}, leader is server {leader_id}[{ip}:{port}]...")
         
+        cross_shard_response = None
         try:
             response = await utils.send_message_async(ip, port, request_message)
             cross_shard_response = CrossShardRspSerializer.parse(response)
-
-            if cross_shard_response.result == CrossShardResultType.YES:
-                id = cross_shard_response.id
-                self.num_reply_for_2PC[id - 1] += 1
-                print(f"Transaction request now gets {self.num_reply_for_2PC[id - 1]} YES from leaders...")
-                if self.num_reply_for_2PC[id - 1] == 2:
-                    # collect all votes, enter 2PC COMMIT phase
-                    await self.broadcast_commit_message(request_message)
-
-            elif cross_shard_response.result == CrossShardResultType.NO:
-                # remove request from the other cluster if there is
-                id = cross_shard_response.id
-                
-                # cluster_to_remove = sender_cluster_id if receiver_cluster_id == cluster_id else receiver_cluster_id
-                # self.transaction_request[cluster_to_remove - 1].remove(request_message)
-                if self.num_reply_for_2PC[id - 1] != -1:
-                    print(f"Transaction request receives NO from leaders...")
-                    await self.broadcast_abort_message(request_message)
-                # update reply status to -1
-                self.num_reply_for_2PC[id - 1] = -1
-               
-
-
         except TimeoutError as e:
             # remove request from the other cluster if there is
             id = cross_shard_response.id
             # cluster_to_remove = sender_cluster_id if receiver_cluster_id == cluster_id else receiver_cluster_id
             # self.transaction_request[cluster_to_remove - 1].remove(request_message)
-            if self.num_reply_for_2PC[id - 1] != -1:
+            if self.num_reply_for_2PC[id] != -1:
                 print(f"Transaction request receives reply timeout out from leaders...")
                 await self.broadcast_abort_message(request_message)
             # update reply status to -1
-            self.num_reply_for_2PC[id - 1] = -1
+            self.num_reply_for_2PC[id] = -1
+
+        if cross_shard_response.result == CrossShardResultType.YES:
+            id = cross_shard_response.id
+            self.num_reply_for_2PC[id] += 1
+            print(f"Transaction request now gets {self.num_reply_for_2PC[id]} YES from leaders...")
+            if self.num_reply_for_2PC[id] == 2:
+                # collect all votes, enter 2PC COMMIT phase
+                await self.broadcast_commit_message(request_message)
+        elif cross_shard_response.result == CrossShardResultType.NO:
+            # remove request from the other cluster if there is
+            id = cross_shard_response.id
+            
+            # cluster_to_remove = sender_cluster_id if receiver_cluster_id == cluster_id else receiver_cluster_id
+            # self.transaction_request[cluster_to_remove - 1].remove(request_message)
+            if self.num_reply_for_2PC[id] != -1:
+                print(f"Transaction request receives NO from leaders...")
+                await self.broadcast_abort_message(request_message)
+            # update reply status to -1
+            self.num_reply_for_2PC[id] = -1
+
 
 
     async def broadcast_commit_message(self, request_message: bytes):
@@ -300,9 +300,9 @@ class RoutingService:
             ip, port = LocalConfig.server_ip_port_list[receiver_cluster_id][i]
             await utils.send_message_async(ip, port, message_commited, with_response=False)
 
-        print("Transaction SUCCEED")
+        #print("Transaction SUCCEED")
         #self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()
-        writer = self.conn_for_cross[cross_shard_req.id - 1]
+        writer = self.conn_for_cross[cross_shard_req.id]
         writer.write("Transaction SUCCEED".encode())
         await writer.drain()  # Ensure the data is sent before closing the connection
         writer.close()
@@ -325,8 +325,8 @@ class RoutingService:
             await utils.send_message_async(ip, port, message_aborted, with_response=False)
 
         #self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()
-        writer = self.conn_for_cross[cross_shard_req.id - 1]
-        writer.write("Transaction SUCCEED".encode())
+        writer = self.conn_for_cross[cross_shard_req.id]
+        writer.write("Transaction ABORTED".encode())
         await writer.drain()  # Ensure the data is sent before closing the connection
         writer.close()
         await writer.wait_closed()

@@ -47,11 +47,9 @@ class Client:
                 except ValueError:
                     print('Invalid transfer command')
                     continue
-                import threading
-                thread = threading.Thread(target=lambda: asyncio.run(self.create_single_transfer(int(sender), int(recipient), int(amount))))
-                thread.daemon = True
-                thread.start()
-            elif re.match(r'balance|bal|b', cmd):
+                asyncio.run(self.create_single_transfer(int(sender), int(recipient), int(amount)))
+                
+            elif re.match(r'^(balance|b)\s+\d+(\.\d+)?$', cmd):
                 try:
                     user = cmd.split()[1]
                 except ValueError:
@@ -203,7 +201,7 @@ class Client:
         avg_latency = sum(latencies) / num_requests if num_requests > 0 else 0
         throughput = num_requests / total_time if total_time > 0 else 0
 
-        print(f"\nLoad Testing Completed:")
+        print(f"Load Testing Completed:")
         print('-'*30)
         print(f"Total Requests: {num_requests}")
         print(f"Total Time: {total_time:.2f} seconds")
@@ -211,7 +209,7 @@ class Client:
         print(f"Average Latency: {avg_latency:.4f} seconds")
         print('-'*30)
 
-        logging.info(f"\nLoad Testing Completed:")
+        logging.info(f"Load Testing Completed:")
         logging.info('-'*30)
         logging.info(f"Total Requests: {num_requests}")
         logging.info(f"Total Time: {total_time:.2f} seconds")
@@ -228,17 +226,17 @@ class Client:
         cross_shard_file_path = os.path.join(script_dir, 'test/cross_shard_test_500.txt')
         intra_cross_shard_file_path = os.path.join(script_dir, 'test/intra_cross_shard_test_500.txt')
 
-        print("Start load testing for intra-shard transactions...")
-        logging.info("Start load testing for intra-shard transactions...")
-        await self.start_load_test(intra_shard_file_path)
+        # print("Start load testing for intra-shard transactions...")
+        # logging.info("Start load testing for intra-shard transactions...")
+        # await self.start_load_test(intra_shard_file_path)
 
         # print("Start load testing for cross-shard transactions...")
         # logging.info("Start load testing for cross-shard transactions...")
         # await self.start_load_test(cross_shard_file_path)
 
-        # print("Start load testing for intra-shard and cross-shard transactions...")
-        # logging.info("Start load testing for intra-shard and cross-shard transactions...")
-        # await self.start_load_test(intra_cross_shard_file_path)
+        print("Start load testing for intra-shard and cross-shard transactions...")
+        logging.info("Start load testing for intra-shard and cross-shard transactions...")
+        await self.start_load_test(intra_cross_shard_file_path)
 
 
     def stop_server(self, server_id):

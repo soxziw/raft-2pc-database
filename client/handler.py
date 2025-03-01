@@ -5,13 +5,17 @@ import unittest
 
 import utils
 from serializers.IntraShardReq import IntraShardReqSerializer
+from serializers.IntraShardRsp import IntraShardRspSerializer
 from serializers.CrossShardReq import CrossShardReqSerializer
+from serializers.CrossShardRsp import CrossShardRspSerializer
 from serializers.printBalanceReq import printBalanceReqSerializer
 from serializers.printBalanceRsp import printBalanceRspSerializer
 from serializers.printDatastoreReq import printDatastoreReqSerializer
 from serializers.printDatastoreRsp import printDatastoreRspSerializer
 from serializers.Stop import StopSerializer
 from serializers.Resume import ResumeSerializer
+from proto.intraShardRsp_pb2 import IntraShardResultType
+from proto.crossShardRsp_pb2 import CrossShardResultType
 import time
 from config import LocalConfig
 
@@ -41,12 +45,12 @@ class TransactionHandler:
         ip, port = LocalConfig.routing_service_ip_port
         print(f"Sending intra-shard transaction [clusterId={cluster_id}] request to routing service {ip}:{port}...")
 
-        await utils.send_message_async(ip, port, message, with_response=True)
-        # intra_shard_response = IntraShardRspSerializer.parse(response)
-        # if intra_shard_response.result == IntraShardResultType.SUCCESS:
-        #     print(f"Transaction SUCCESS: user {sender_id} has transferred ${amount} to {recipient_id}")
-        # else:
-        #     print(f"Transaction FAILED")
+        response = await utils.send_message_async(ip, port, message, with_response=True)
+        intra_shard_response = IntraShardRspSerializer.parse(response)
+        if intra_shard_response.result == IntraShardResultType.SUCCESS:
+            print(f"Transaction SUCCEED: user {sender_id} has transferred ${amount} to {recipient_id}")
+        else:
+            print(f"Transaction FAILED")
 
 
 
@@ -60,12 +64,12 @@ class TransactionHandler:
         
         print(f"Sending cross-shard transaction request[senderClusterId={sender_cluser_id}, receiverClusterId={recipient_cluser_id}] to routing service {ip}:{port}...")
 
-        await utils.send_message_async(ip, port, message, with_response=True)
-        # cross_shard_response = CrossShardRspSerializer.parse(response)
-        # if cross_shard_response.result == CrossShardResultType.SUCCESS:
-        #     print(f"Transaction SUCCESS: user {sender_id} has transferred ${amount} to {recipient_id}")
-        # else:
-        #     print(f"Transaction FAILED")
+        cross_shard_response = await utils.send_message_async(ip, port, message, with_response=True)
+
+        if cross_shard_response and cross_shard_response.decode() == "Transaction SUCCEED":
+            print(f"Transaction SUCCEED: user {sender_id} has transferred ${amount} to {recipient_id}")
+        else:
+            print(f"Transaction FAILED")
         
 
     @classmethod

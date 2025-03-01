@@ -66,14 +66,16 @@ async def send_message_async(hostname: str, port: int, message: bytes, with_resp
 
         if with_response:
             try:
-                response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=LocalConfig.message_timeout_ms)
+                response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=50)
             except asyncio.TimeoutError:
                 raise TimeoutError("Socket timeout while receiving response")
+                # print("Socket timeout while receiving response")
 
         writer.close()
         await writer.wait_closed()
 
     except asyncio.TimeoutError:
         raise TimeoutError("Socket timeout while connecting")
+        # print("Socket timeout while receiving response")
     
     return response
