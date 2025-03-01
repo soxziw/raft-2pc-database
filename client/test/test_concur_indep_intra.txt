@@ -1,0 +1,4 @@
+// Concurrent independent intra-shard transactions in different clusters
+(1, 2, 1)
+(1001, 1002, 1)
+(2001, 2002, 1)
