@@ -226,9 +226,9 @@ class Client:
         cross_shard_file_path = os.path.join(script_dir, 'test/cross_shard_test_500.txt')
         intra_cross_shard_file_path = os.path.join(script_dir, 'test/intra_cross_shard_test_500.txt')
 
-        # print("Start load testing for intra-shard transactions...")
-        # logging.info("Start load testing for intra-shard transactions...")
-        # await self.start_load_test(intra_shard_file_path)
+        print("Start load testing for intra-shard transactions...")
+        logging.info("Start load testing for intra-shard transactions...")
+        await self.start_load_test(intra_shard_file_path)
 
         print("Start load testing for cross-shard transactions...")
         logging.info("Start load testing for cross-shard transactions...")
@@ -238,9 +238,9 @@ class Client:
         phase1_latencies = 0
         phase2_latencies = 0
         num_requests = len(self.routing_service.latency_phase1)
-        for id, latency in self.routing_service.latency_phase1:
+        for id, latency in self.routing_service.latency_phase1.items():
             phase1_latencies += latency
-        for id, latency in self.routing_service.latency_phase2:
+        for id, latency in self.routing_service.latency_phase2.items():
             phase2_latencies += latency
 
         avg_latency_phase1 = phase1_latencies / num_requests if num_requests > 0 else 0
@@ -248,9 +248,9 @@ class Client:
         print(f"Phase1 Average Latency: {avg_latency_phase1:.4f} seconds")
         print(f"Phase2 Average Latency: {avg_latency_phase2:.4f} seconds")
 
-        # print("Start load testing for intra-shard and cross-shard transactions...")
-        # logging.info("Start load testing for intra-shard and cross-shard transactions...")
-        # await self.start_load_test(intra_cross_shard_file_path)
+        print("Start load testing for intra-shard and cross-shard transactions...")
+        logging.info("Start load testing for intra-shard and cross-shard transactions...")
+        await self.start_load_test(intra_cross_shard_file_path)
 
 
     def stop_server(self, server_id):
