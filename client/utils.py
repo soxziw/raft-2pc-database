@@ -9,7 +9,7 @@ HANDLE_REQUEST_TIME_DELAY = 5
 CLIENT_TIMEOUT = 10
 BUFFER_SIZE = 1024
 DEFAULT_BALANCE = 10.0
-JOB_INTERVAL = 0.1
+JOB_INTERVAL = 1
 TIMEOUT_ERROR = "TIMEOUT"
 
 
@@ -67,7 +67,7 @@ async def send_message_async(hostname: str, port: int, message: bytes, with_resp
     """Using TCP for asynchronous message passing."""
     response = None
     try:
-        print(f"sending {message} to {hostname}:{port}...")
+        #print(f"sending {message} to {hostname}:{port}...")
         
         reader, writer = await asyncio.open_connection(hostname, port)
 
@@ -79,22 +79,22 @@ async def send_message_async(hostname: str, port: int, message: bytes, with_resp
                 response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=20)
             except asyncio.TimeoutError:
                 raise TimeoutError("Socket timeout while receiving response")
-                # print("Socket timeout while receiving response")
-
-        writer.close()
-        await writer.wait_closed()
 
     except asyncio.TimeoutError:
         raise TimeoutError("Socket timeout while connecting")
-        # print("Socket timeout while receiving response")
-    
+
+    finally:
+        if writer is not None:
+            writer.close()
+            await writer.wait_closed()  # Ensure proper cleanup
     return response
+
 
 async def send_message_to_raft_async(hostname: str, port: int, message: bytes, with_response=True) -> bytes:
     """Using TCP for asynchronous message passing."""
     response = None
     try:
-        print(f"sending {message} to {hostname}:{port}...")
+        #print(f"sending {message} to {hostname}:{port}...")
         
         reader, writer = await asyncio.open_connection(hostname, port)
 
@@ -106,13 +106,12 @@ async def send_message_to_raft_async(hostname: str, port: int, message: bytes, w
                 response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=30)
             except asyncio.TimeoutError:
                 raise TimeoutError("Socket timeout while receiving response")
-                # print("Socket timeout while receiving response")
-
-        writer.close()
-        await writer.wait_closed()
 
     except asyncio.TimeoutError:
         raise TimeoutError("Socket timeout while connecting")
-        # print("Socket timeout while receiving response")
-    
+
+    finally:
+        if writer is not None:
+            writer.close()
+            await writer.wait_closed()  # Ensure proper cleanup
     return response

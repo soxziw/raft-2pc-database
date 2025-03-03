@@ -14,6 +14,8 @@ from serializers.CrossShardReq import CrossShardReqSerializer
 from serializers.IntraShardReq import IntraShardReqSerializer
 from config import LocalConfig
 import asyncio
+import timeloop
+from datetime import timedelta
 
 
 class PerformanceMetricPerRequest:
@@ -113,7 +115,7 @@ class RoutingService:
                 pending_requests = self.transaction_request[cluster_id]
                 if pending_requests:
                     print(f"Executing pending requests of cluster {cluster_id}...")
-                    for request in pending_requests[:]:  # Create copy to iterate
+                    for request, request_time in pending_requests[:]:  # Create copy to iterate
                         wrapper.ParseFromString(request)
                         if wrapper.HasField("intraShardReq"):
                             intra_shard_req = wrapper.intraShardReq
@@ -126,7 +128,7 @@ class RoutingService:
 
                         elif wrapper.HasField("crossShardReq"):
                             await self.redirect_cross_shard_request_to_server(request, cluster_id)
-                        pending_requests.remove(request)
+                    self.transaction_request[cluster_id] = []
 
             else:
                 self.leader_per_cluster[cluster_id] = server_id
@@ -161,9 +163,9 @@ class RoutingService:
             #self.latency_for_intra.append(PerformanceMetricPerRequest(len(request_message)))
 
             if self.leader_per_cluster[intra_shard_req.clusterId] == -1:
-                print(f"\033[33mNo leader for cluster {intra_shard_req.clusterId}, putting request in the queue...\033[0m")
+                print(f"\033[33mNo leader for cluster {intra_shard_req.clusterId}, putting request[user {intra_shard_req.senderId} transfers to user {intra_shard_req.receiverId} ${intra_shard_req.amount}] in the queue...\033[0m")
                 self.conn_for_intra[self.transaction_id] = writer
-                self.transaction_request[intra_shard_req.clusterId].append(message_with_id)
+                self.transaction_request[intra_shard_req.clusterId].append((message_with_id, time.time()))
                 # response = "hello".encode()
                 # writer.write(response)
                 # await writer.drain()  # Ensure the data is sent before closing the connection
@@ -202,14 +204,14 @@ class RoutingService:
             receiver_has_leader = self.leader_per_cluster[cross_shard_req.receiverClusterId] != -1
 
             if not sender_has_leader:
-                print(f"No leader for sender cluster {cross_shard_req.senderClusterId}, queueing request...")
-                self.transaction_request[cross_shard_req.senderClusterId].append(message_with_id)
+                print(f"\033[33mNo leader for sender cluster {cross_shard_req.senderClusterId}, queueing request[user {cross_shard_req.senderId} transfers to user {cross_shard_req.receiverId} ${cross_shard_req.amount}]...\033[0m")
+                self.transaction_request[cross_shard_req.senderClusterId].append((message_with_id, time.time()))
             else:
                 await self.redirect_cross_shard_request_to_server(message_with_id, cross_shard_req.senderClusterId)
 
             if not receiver_has_leader:
-                print(f"\033[33mNo leader for receiver cluster {cross_shard_req.receiverClusterId}, queueing request...\033[0m")
-                self.transaction_request[cross_shard_req.receiverClusterId].append(message_with_id)
+                print(f"\033[33mNo leader for receiver cluster {cross_shard_req.receiverClusterId}, queueing request[user {cross_shard_req.senderId} transfers to user {cross_shard_req.receiverId} ${cross_shard_req.amount}]...\033[0m")
+                self.transaction_request[cross_shard_req.receiverClusterId].append((message_with_id, time.time()))
             else:
                 await self.redirect_cross_shard_request_to_server(message_with_id, cross_shard_req.receiverClusterId)
                 
@@ -274,6 +276,7 @@ class RoutingService:
                     self.latency_phase1[id] = time.time() - self.latency_phase1[id]
                 # collect all votes, enter 2PC COMMIT phase
                 await self.broadcast_commit_message(request_message)
+
         elif cross_shard_response.result == CrossShardResultType.NO:
             # remove request from the other cluster if there is
             id = cross_shard_response.id
@@ -301,13 +304,17 @@ class RoutingService:
 
         print(f"Broadcasting COMMIT to all servers in cluster {sender_cluster_id} and cluster {receiver_cluster_id}...")
         self.latency_phase2[cross_shard_req.id] = time.time()
+        tasks = []
         for i in range(LocalConfig.num_server_per_cluster):
             ip, port = LocalConfig.server_ip_port_list[sender_cluster_id][i]
-            await utils.send_message_to_raft_async(ip, port, message_commited, with_response=False)
+            task = utils.send_message_to_raft_async(ip, port, message_commited, with_response=True)
+            tasks.append(task)
             ip, port = LocalConfig.server_ip_port_list[receiver_cluster_id][i]
-            await utils.send_message_to_raft_async(ip, port, message_commited, with_response=False)
+            task = utils.send_message_to_raft_async(ip, port, message_commited, with_response=True)
+            tasks.append(task)
+        responses = await asyncio.gather(*tasks)
         self.latency_phase2[cross_shard_req.id] = time.time() - self.latency_phase2[cross_shard_req.id]
-        # print("\033[32mTransaction SUCCEED\033[0m")
+        #print("\033[32mTransaction SUCCEED\033[0m")
         #self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()
         writer = self.conn_for_cross[cross_shard_req.id]
         writer.write("Transaction SUCCEED".encode())
@@ -326,11 +333,15 @@ class RoutingService:
         sender_cluster_id, receiver_cluster_id = cross_shard_req.senderClusterId, cross_shard_req.receiverClusterId
         print(f"Broadcasting ABORT to all servers in cluster {sender_cluster_id} and cluster {receiver_cluster_id}...")
         self.latency_phase2[cross_shard_req.id] = time.time()
+        tasks = []
         for i in range(LocalConfig.num_server_per_cluster):
             ip, port = LocalConfig.server_ip_port_list[sender_cluster_id][i]
-            await utils.send_message_to_raft_async(ip, port, message_aborted, with_response=False)
+            task = utils.send_message_to_raft_async(ip, port, message_aborted, with_response=True)
+            tasks.append(task)
             ip, port = LocalConfig.server_ip_port_list[receiver_cluster_id][i]
-            await utils.send_message_to_raft_async(ip, port, message_aborted, with_response=False)
+            task = utils.send_message_to_raft_async(ip, port, message_aborted, with_response=True)
+            tasks.append(task)
+        responses = await asyncio.gather(*tasks) 
         self.latency_phase2[cross_shard_req.id] = time.time() - self.latency_phase2[cross_shard_req.id]
         #self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()
         writer = self.conn_for_cross[cross_shard_req.id]
@@ -340,10 +351,45 @@ class RoutingService:
         await writer.wait_closed()
 
 
+request_queue_checker = timeloop.Timeloop()
+    
+
+"""Set up a new task to periodically check the request queue"""
+@request_queue_checker.job(interval=timedelta(seconds=utils.JOB_INTERVAL))                          
+def process_message_queue():
+    wrapper = WrapperMessage()
+    for i in range(routing_service.num_cluster):
+        pending_requests = routing_service.transaction_request[i]
+        new_pending_requests = []
+        if not pending_requests:
+            continue
+        for request, request_time in pending_requests[:]:
+            current_time = time.time()
+            if current_time - request_time < 20:
+                new_pending_requests.append((request, request_time))
+                continue
+            # remove the request from queue
+            wrapper.ParseFromString(request)
+            if wrapper.HasField("intraShardReq"):
+                intra_shard_req = wrapper.intraShardReq
+                print(f"\033[33mNo leader timeout, request[user {intra_shard_req.senderId} transfers to user {intra_shard_req.receiverId} ${intra_shard_req.amount}] removed from queue:\033[0m")
+
+            elif wrapper.HasField("crossShardReq"):
+                cross_shard_req = wrapper.crossShardReq
+                id = cross_shard_req.id
+                print(f"\033[33mNo leader timeout, request[user {cross_shard_req.senderId} transfers to user {cross_shard_req.receiverId} ${cross_shard_req.amount}]  removed from queue:\033[0m")
+                if routing_service.num_reply_for_2PC[id] != -1:
+                    asyncio.run(routing_service.broadcast_abort_message(request))
+                routing_service.num_reply_for_2PC[id] = -1
+        routing_service.transaction_request[i] = new_pending_requests
+
+
 if __name__ == "__main__":
         
         ip, port = LocalConfig.routing_service_ip_port
         routing_service = RoutingService(ip,port)
+
+        request_queue_checker.start()
 
         # start the routing service
         routing_service.start()
