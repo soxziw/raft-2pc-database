@@ -1,2 +1,10 @@
+// Test: Concurrent intra-shard transactions both commit (test_concurrent_intra_shard_both_commit)
+// Description: This test performs two concurrent intra-shard transactions:
+// 1. Account 100 transfers $4 to account 200 within Cluster 0
+// 2. Account 1500 transfers $2 to account 1600 within Cluster 1
+// Both transactions should commit successfully since they operate on different shards
+// and don't interfere with each other. This tests the system's ability to handle
+// multiple independent transactions occurring simultaneously.
+
 (100, 200, 4)
 (1500, 1600, 2)

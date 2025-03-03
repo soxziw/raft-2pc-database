@@ -1,4 +1,10 @@
-//  C1 loses majority
-// stop 1
-// stop 2
+// Test: Raft failure in intra-shard transaction (test_raft_failure_in_intra_shard)
+// Description: This test simulates a majority failure in Cluster 0 by stopping 2 out of 3 nodes,
+// then attempts a transaction where account 200 transfers $1 to account 100.
+// The transaction should fail because Raft consensus requires a majority of nodes to be operational.
+// This tests the system's behavior when a shard loses quorum and cannot process transactions.
+// Commands:
+// stop 1  // Stop server 1 in Cluster 0
+// stop 2  // Stop server 2 in Cluster 0
+
 (200, 100, 1)

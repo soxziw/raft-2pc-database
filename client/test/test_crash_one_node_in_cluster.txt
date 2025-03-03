@@ -1,3 +1,10 @@
-// crash 1 out of 3 nodes in C1
-// stop 1
+// Test: Crash one node in a cluster (test_crash_one_node_in_cluster)
+// Description: This test simulates a failure by crashing 1 out of 3 nodes in Cluster 0,
+// then performs a transaction where account 200 transfers $1 to account 100.
+// The transaction should still succeed because the Raft consensus protocol
+// can tolerate the failure of a minority of nodes (1 out of 3) while maintaining
+// system availability and consistency.
+// Commands:
+// stop 1  // Stop server 1 in Cluster 0
+
 (200, 100, 1)
