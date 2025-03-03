@@ -1,0 +1,11 @@
+// Test: Concurrent cross-shard transactions with partial failure (test_concurrent_cross_shard_partial_failure)
+// Description: This test executes two concurrent cross-shard transactions:
+// 1. Account 100 (Cluster 0) transfers $1 to account 1500 (Cluster 1) - Should succeed
+//    because account 100 has sufficient balance for this small transaction.
+// 2. Account 200 (Cluster 0) transfers $11 to account 1600 (Cluster 1) - Should fail
+//    because account 200 has insufficient balance (default balance is $10).
+// This test verifies that the 2PC protocol correctly handles concurrent transactions
+// with mixed outcomes, ensuring atomicity for each individual transaction.
+
+(100, 1500, 1)
+(200, 1600, 11)

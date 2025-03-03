@@ -1,0 +1,10 @@
+// Test: Partition leader in a cluster (test_partition_leader_in_cluster)
+// Description: This test simulates a network partition by stopping the leader (server 0) in Cluster 0,
+// then performs a transaction where account 200 transfers $1 to account 100.
+// The transaction should still succeed because the Raft consensus protocol will elect a new leader
+// among the remaining nodes, demonstrating the system's ability to maintain availability
+// and consistency despite leader failures.
+// Commands:
+// stop 0  // Stop server 0 (leader) in Cluster 0
+
+(200, 100, 1)

@@ -1,0 +1,10 @@
+// Test: Concurrent cross-shard transactions both commit (test_concurrent_cross_shard_both_commit)
+// Description: This test executes two concurrent cross-shard transactions:
+// 1. Account 100 (Cluster 0) transfers $1 to account 1500 (Cluster 1)
+// 2. Account 200 (Cluster 0) transfers $4 to account 1600 (Cluster 1)
+// Both transactions should commit successfully as they involve different accounts
+// with sufficient balances, demonstrating the system's ability to handle
+// multiple concurrent cross-shard transactions using the 2PC protocol.
+
+(100, 1500, 1)
+(200, 1600, 4)

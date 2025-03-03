@@ -1,0 +1,8 @@
+// Test: Basic intra-shard transaction success (test_basic_intra_shard_success)
+// Description: This test performs a transaction between account 100 and account 200
+// within the same shard (Cluster 0) with an amount of $3. The transaction should succeed
+// because account 100 has sufficient balance and both accounts are in the same shard,
+// which means it can be processed directly by the Raft consensus protocol without
+// requiring the 2PC protocol.
+
+(100, 200, 3)

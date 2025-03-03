@@ -1,0 +1,7 @@
+// Test: Basic cross-shard transaction failure (test_basic_cross_shard_failure)
+// Description: This test attempts a cross-shard transaction between account 100 (in Cluster 0)
+// and account 1500 (in Cluster 1) with an amount of $15. The transaction is expected to fail
+// because the amount ($15) exceeds the balance in account 100, which should trigger the
+// validation check in the PREPARE phase of the 2PC protocol.
+
+(100, 1500, 15)

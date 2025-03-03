@@ -1,0 +1,11 @@
+// Test: 2PC transaction failure due to cluster partition (test_2pc_failure_due_to_cluster_partition)
+// Description: This test simulates a network partition where Cluster 1 (C1) becomes
+// completely isolated from the network. All servers in C1 (servers 3, 4, and 5) are
+// stopped to simulate this partition. The cross-shard transaction between accounts
+// 200 and 1500 should fail because C1 is unreachable during the 2PC protocol.
+// Commands:
+// stop 3  // Stop server 3 in Cluster 1
+// stop 4  // Stop server 4 in Cluster 1
+// stop 5  // Stop server 5 in Cluster 1
+
+(200, 1500, 2)

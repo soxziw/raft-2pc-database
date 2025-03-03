@@ -91,7 +91,7 @@ void CrossShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> 
         // Append commit log entry
         raft_state->log_.push_back(
             LogEntry {
-                raft_state->current_term_,
+                raft_state->role_==Role::LEADER ? raft_state->current_term_ : -1,
                 static_cast<int>(raft_state->log_.size()),
                 fmt::format("[COMMIT] {} pays {} ${}",req.senderid(), req.receiverid(), req.amount()),
                 req.id(),
@@ -138,7 +138,7 @@ void CrossShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> 
         // Append abort log entry
         raft_state->log_.push_back(
             LogEntry {
-                raft_state->current_term_,
+                raft_state->role_==Role::LEADER ? raft_state->current_term_ : -1,
                 static_cast<int>(raft_state->log_.size()),
                 fmt::format("[ABORT] {} pays {} ${}",req.senderid(), req.receiverid(), req.amount()),
                 req.id(),

@@ -1,0 +1,10 @@
+// Test: Concurrent intra-shard transactions with partial failure (test_concurrent_intra_shard_partial_failure)
+// Description: This test performs two concurrent intra-shard transactions:
+// 1. Account 100 attempts to transfer $12 to account 200 within Cluster 0
+// 2. Account 1500 transfers $2 to account 1600 within Cluster 1
+// The first transaction should fail because the amount ($12) exceeds account 100's balance,
+// while the second transaction should succeed. This tests the system's ability to handle
+// concurrent transactions where one fails without affecting the other independent transaction.
+
+(100, 200, 12)
+(1500, 1600, 2)

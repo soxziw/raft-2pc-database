@@ -1,0 +1,7 @@
+// Test: Basic cross-shard transaction success (test_basic_cross_shard_success)
+// Description: This test performs a cross-shard transaction between account 100 (in Cluster 0)
+// and account 1500 (in Cluster 1) with an amount of $2. The transaction should succeed
+// because account 100 has sufficient balance and both accounts are available for the
+// transaction, allowing the 2PC protocol to complete successfully.
+
+(100, 1500, 2)
