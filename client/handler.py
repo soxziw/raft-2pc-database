@@ -45,12 +45,16 @@ class TransactionHandler:
         ip, port = LocalConfig.routing_service_ip_port
         print(f"Sending intra-shard transaction [clusterId={cluster_id}] request to routing service {ip}:{port}...")
 
-        response = await utils.send_message_async(ip, port, message, with_response=True)
-        intra_shard_response = IntraShardRspSerializer.parse(response)
-        if intra_shard_response.result == IntraShardResultType.SUCCESS:
-            print(f"\033[32mTransaction SUCCEED: user {sender_id} has transferred ${amount} to {recipient_id}\033[0m")
-        else:
+        try:
+            response = await utils.send_message_async(ip, port, message, with_response=True)
+            intra_shard_response = IntraShardRspSerializer.parse(response)
+            if intra_shard_response.result == IntraShardResultType.SUCCESS:
+                print(f"\033[32mTransaction SUCCEED: user {sender_id} has transferred ${amount} to {recipient_id}\033[0m")
+            else:
+                print(f"\033[31mTransaction FAILED: user {sender_id} fails to transfer ${amount} to {recipient_id}\033[0m")
+        except TimeoutError:
             print(f"\033[31mTransaction FAILED: user {sender_id} fails to transfer ${amount} to {recipient_id}\033[0m")
+            
 
 
 
@@ -64,11 +68,14 @@ class TransactionHandler:
         
         print(f"Sending cross-shard transaction request[senderClusterId={sender_cluser_id}, receiverClusterId={recipient_cluser_id}] to routing service {ip}:{port}...")
 
-        cross_shard_response = await utils.send_message_async(ip, port, message, with_response=True)
+        try:
+            cross_shard_response = await utils.send_message_async(ip, port, message, with_response=True)
 
-        if cross_shard_response and cross_shard_response.decode() == "Transaction SUCCEED":
-            print(f"\033[32mTransaction SUCCEED: user {sender_id} has transferred ${amount} to {recipient_id}\033[0m")
-        else:
+            if cross_shard_response and cross_shard_response.decode() == "Transaction SUCCEED":
+                print(f"\033[32mTransaction SUCCEED: user {sender_id} has transferred ${amount} to {recipient_id}\033[0m")
+            else:
+                print(f"\033[31mTransaction FAILED: user {sender_id} fails to transfer ${amount} to {recipient_id}\033[0m")
+        except TimeoutError:
             print(f"\033[31mTransaction FAILED: user {sender_id} fails to transfer ${amount} to {recipient_id}\033[0m")
         
 

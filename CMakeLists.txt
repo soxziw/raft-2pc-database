@@ -89,9 +89,9 @@ endif()
 
 # Custom build target for creating all two executables
 add_custom_target(raft2pc
-    COMMAND ${CMAKE_COMMAND} -DBUILD_SERVER=ON -DBUILD_CLIENT=ON -B ${CMAKE_BINARY_DIR}/all -S ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/all --target server
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/all --target client
+    COMMAND ${CMAKE_COMMAND} -DBUILD_SERVER=ON -DBUILD_CLIENT=ON -B ${CMAKE_BINARY_DIR} -S ${CMAKE_SOURCE_DIR}
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target server
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target client
 )
 
 # Custom clean target to remove all build files

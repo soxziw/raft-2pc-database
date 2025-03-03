@@ -75,18 +75,15 @@ async def send_message_async(hostname: str, port: int, message: bytes, with_resp
         await writer.drain()  # Ensure the message is sent before proceeding
 
         if with_response:
-            try:
-                response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=20)
-            except asyncio.TimeoutError:
-                raise TimeoutError("Socket timeout while receiving response")
+            response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=3)
 
-    except asyncio.TimeoutError:
-        raise TimeoutError("Socket timeout while connecting")
-
+    except asyncio.exceptions.TimeoutError:
+        raise TimeoutError("Timeout transaction")
+    
     finally:
         if writer is not None:
             writer.close()
-            await writer.wait_closed()  # Ensure proper cleanup
+            await writer.wait_closed()
     return response
 
 
@@ -103,11 +100,10 @@ async def send_message_to_raft_async(hostname: str, port: int, message: bytes, w
 
         if with_response:
             try:
-                response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=30)
-            except asyncio.TimeoutError:
+                response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=3)
+            except asyncio.exceptions.TimeoutError:
                 raise TimeoutError("Socket timeout while receiving response")
-
-    except asyncio.TimeoutError:
+    except asyncio.exceptions.TimeoutError:
         raise TimeoutError("Socket timeout while connecting")
 
     finally:

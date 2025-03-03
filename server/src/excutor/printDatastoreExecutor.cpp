@@ -11,11 +11,11 @@ void PrintDatastoreExecutor::executeReq(int client_socket, std::shared_ptr<Async
     rsp->set_serverid(req.serverid());
 
     // Copy log entries into response
-    for (const auto& entry : raft_state->log_) {
+    for (int idx = 0; idx <= raft_state->commit_index_; idx++) {
         auto new_entry = rsp->add_entries();
-        new_entry->set_term(entry.term);
-        new_entry->set_index(entry.index); 
-        new_entry->set_command(entry.command);
+        new_entry->set_term(raft_state->log_[idx].term);
+        new_entry->set_index(raft_state->log_[idx].index);
+        new_entry->set_command(raft_state->log_[idx].command);
     }
 
     // Send response back to client

@@ -312,7 +312,11 @@ class RoutingService:
             ip, port = LocalConfig.server_ip_port_list[receiver_cluster_id][i]
             task = utils.send_message_to_raft_async(ip, port, message_commited, with_response=True)
             tasks.append(task)
-        responses = await asyncio.gather(*tasks)
+        try:
+            results = await asyncio.gather(*tasks)
+            print(results)
+        except Exception as e:
+            print(f"Exception caught: {e}")
         self.latency_phase2[cross_shard_req.id] = time.time() - self.latency_phase2[cross_shard_req.id]
         #print("\033[32mTransaction SUCCEED\033[0m")
         #self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()
@@ -341,7 +345,11 @@ class RoutingService:
             ip, port = LocalConfig.server_ip_port_list[receiver_cluster_id][i]
             task = utils.send_message_to_raft_async(ip, port, message_aborted, with_response=True)
             tasks.append(task)
-        responses = await asyncio.gather(*tasks) 
+        try:
+            results = await asyncio.gather(*tasks)
+            print(results)
+        except Exception as e:
+            print(f"Exception caught: {e}")
         self.latency_phase2[cross_shard_req.id] = time.time() - self.latency_phase2[cross_shard_req.id]
         #self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()
         writer = self.conn_for_cross[cross_shard_req.id]
@@ -365,7 +373,7 @@ def process_message_queue():
             continue
         for request, request_time in pending_requests[:]:
             current_time = time.time()
-            if current_time - request_time < 20:
+            if current_time - request_time < 3:
                 new_pending_requests.append((request, request_time))
                 continue
             # remove the request from queue
