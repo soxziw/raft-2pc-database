@@ -75,7 +75,7 @@ async def send_message_async(hostname: str, port: int, message: bytes, with_resp
         await writer.drain()  # Ensure the message is sent before proceeding
 
         if with_response:
-            response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=3)
+            response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=5)
 
     except asyncio.exceptions.TimeoutError:
         raise TimeoutError("Timeout transaction")

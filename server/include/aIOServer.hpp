@@ -10,6 +10,7 @@
 const int SERVER_NUM_PER_CLUSTER = 3;
 const int HEAT_BEAT_INTERVAL_MS = 100;
 const int TERM_TIMEOUT_MS = 200;
+const int MAX_ENTRY_SIZE = 20;
 
 /**
  * AIOServer - Server with async I/O.

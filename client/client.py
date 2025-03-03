@@ -82,7 +82,7 @@ class Client:
                 self.resume_server(int(server_id))
             elif re.match(r'^test_\w+$', cmd):
                 script_dir = os.path.dirname(os.path.abspath(__file__))
-                test_path = os.path.join(script_dir, f"test/{cmd}.txt")
+                test_path = os.path.join(script_dir, f"../test/{cmd}.txt")
                 if os.path.exists(test_path):
                     print(f"Running test file: {test_path}")
                     asyncio.run(self.start_test(test_path, is_load_test=False))
@@ -213,9 +213,9 @@ class Client:
     async def print_performance(self):
         """Prints throughput and latency from the time the client initiates a transaction to the time the client process receives a reply message."""                    
         script_dir = os.path.dirname(os.path.abspath(__file__))  # Get current script directory
-        intra_shard_file_path = os.path.join(script_dir, 'test/intra_shard_test_500.txt')
-        cross_shard_file_path = os.path.join(script_dir, 'test/cross_shard_test_500.txt')
-        intra_cross_shard_file_path = os.path.join(script_dir, 'test/intra_cross_shard_test_500.txt')
+        intra_shard_file_path = os.path.join(script_dir, '../test/intra_shard_test_1000.txt')
+        cross_shard_file_path = os.path.join(script_dir, '../test/cross_shard_test_500.txt')
+        intra_cross_shard_file_path = os.path.join(script_dir, '../test/intra_cross_shard_test_500.txt')
 
         print("Start load testing for intra-shard transactions...")
         logging.info("Start load testing for intra-shard transactions...")
@@ -223,7 +223,6 @@ class Client:
 
         print("Start load testing for cross-shard transactions...")
         logging.info("Start load testing for cross-shard transactions...")
-
         await self.start_test(cross_shard_file_path, is_load_test=True)
 
         # phase1_latencies = 0

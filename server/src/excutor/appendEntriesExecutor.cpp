@@ -19,6 +19,7 @@ void AppendEntriesExecutor::executeReq(int client_socket, std::shared_ptr<AsyncI
     if (req.term() < raft_state->current_term_) { // Out-of-date term
         rsp->set_term(raft_state->current_term_);
         rsp->set_success(false);
+        rsp->set_matchlogsize(-1);
         std::printf("[%d:%d][AppendEntriesReq:%d] Out-of-date term or not best leader.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);
     } else { // Downlevel to follower and replicate log
         if (req.term() > raft_state->current_term_) { // Update term
@@ -30,6 +31,7 @@ void AppendEntriesExecutor::executeReq(int client_socket, std::shared_ptr<AsyncI
         if ((int)raft_state->log_.size() <= req.prevlogindex() || (req.prevlogindex() >= 0 && raft_state->log_[req.prevlogindex()].term != req.prevlogterm())) { // Log entry not exist or not match in current server
             rsp->set_term(raft_state->current_term_);
             rsp->set_success(false);
+            rsp->set_matchlogsize(-1);
             std::printf("[%d:%d][AppendEntriesReq:%d] Log entry not exist or not match in current server.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);
         } else {
             int log_idx_base = req.prevlogindex() + 1;
@@ -73,6 +75,7 @@ void AppendEntriesExecutor::executeReq(int client_socket, std::shared_ptr<AsyncI
             }
             rsp->set_term(raft_state->current_term_);
             rsp->set_success(true);
+            rsp->set_matchlogsize(raft_state->log_.size());
             std::printf("[%d:%d][AppendEntriesReq:%d] Success.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);
         }
     }
@@ -80,14 +83,26 @@ void AppendEntriesExecutor::executeReq(int client_socket, std::shared_ptr<AsyncI
     return;
 }
 
+int find_majority_midpoint(const std::vector<int>& matched_log_size) {
+    // Find the median value in the matched_log_size vector
+    // This is used to determine the commit index based on majority consensus
+    std::vector<int> sorted = matched_log_size;
+    std::sort(sorted.begin(), sorted.end());
+    
+    // Return the middle element (median) which represents majority agreement
+    return sorted[sorted.size() / 2];
+}
+
 void AppendEntriesExecutor::executeRsp(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const AppendEntriesRsp& rsp) {
     if (raft_state->role_ == Role::LEADER) { // Still remain leader
         if (rsp.term() == raft_state->current_term_) { // Remain in same term
             if (rsp.success()) { // Success
-                raft_state->log_granted_num_++;
-                if (raft_state->log_granted_num_ >= 2 && raft_state->coming_commit_index_ >= 0 && raft_state->log_[raft_state->coming_commit_index_].term == raft_state->current_term_) { // Reach majority and last log in current term
+                raft_state->matched_log_size_[rsp.serverid() % SERVER_NUM_PER_CLUSTER] = rsp.matchlogsize();
+                int new_commit_index = find_majority_midpoint(raft_state->matched_log_size_) - 1;
+                
+                if (new_commit_index >= 0 && raft_state->log_[new_commit_index].term == raft_state->current_term_) { // Reach majority and last log in current term
                     std::printf("[%d:%d][AppendEntriesRsp:%d] Reach majority and last log in current term.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);
-                    for (int idx = raft_state->commit_index_ + 1; idx <= raft_state->coming_commit_index_; idx++) {
+                    for (int idx = raft_state->commit_index_ + 1; idx <= new_commit_index; idx++) {
                         if (raft_state->log_[idx].command[0] == '[') { // Cross-shard transactions
                             if (raft_state->log_[idx].command.substr(0, 9) == "[PREPARE]") {
                                 // Unlock data items
@@ -128,14 +143,13 @@ void AppendEntriesExecutor::executeRsp(int client_socket, std::shared_ptr<AsyncI
                         }
                         std::printf("[%d:%d][AppendEntriesRsp:%d] Commit: %s.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_, raft_state->log_[idx].command.c_str());
                     }
-                    if (raft_state->commit_index_ != raft_state->coming_commit_index_) {
+                    if (raft_state->commit_index_ != new_commit_index) {
                         // Update data shard after commit
                         update_data_shard(raft_state);
                         std::printf("[%d:%d][AppendEntriesRsp:%d] Update data shard after commit.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);
-                        raft_state->commit_index_ = raft_state->coming_commit_index_;
+                        raft_state->commit_index_ = new_commit_index;
                     }
                 }
-                raft_state->matched_log_size_[rsp.serverid() % SERVER_NUM_PER_CLUSTER] = raft_state->coming_commit_index_ + 1;
             } else { // Fail, decrease matched log size
                 std::printf("[%d:%d][AppendEntriesRsp:%d] Fail, decrease matched log size.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);
                 raft_state->matched_log_size_[rsp.serverid() % SERVER_NUM_PER_CLUSTER]--;

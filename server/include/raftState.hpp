@@ -36,8 +36,6 @@ public:
     Role role_; // Role of current server
     int vote_granted_num_; // Number of vote received in this term
     std::vector<LogEntry> log_; // Log entries
-    int log_granted_num_; // Number of success log replication in this term
-    int coming_commit_index_; // Coming commit index in this term, if log_granted_num_ >= majority
     int commit_index_; // Commited index
     std::vector<int> matched_log_size_; // Matched log size for each server
     std::unordered_map<int, int> local_balance_tb_; // Local balance table

@@ -6,6 +6,7 @@
 #include <memory>
 #include <liburing.h>
 #include <fmt/format.h>
+#include <algorithm>
 
 #include "aIOServer.hpp"
 #include "util.hpp"
@@ -77,7 +78,6 @@ void AIOServer::broadcast_heart_beat() {
     aio_->add_connect_request(routing_service_ip_port_pair_.first, routing_service_ip_port_pair_.second, wrapper_msg, AIOMessageType::NO_RESPONSE);
 
     // Broad cast to other servers in the same cluster
-    raft_state_->coming_commit_index_ = (int)raft_state_->log_.size() - 1; // Set coming commit index
     for (int idx = 0; idx < SERVER_NUM_PER_CLUSTER; idx++) {
         if (idx == server_id_ % SERVER_NUM_PER_CLUSTER) {
             continue;
@@ -90,7 +90,7 @@ void AIOServer::broadcast_heart_beat() {
         req->set_prevlogindex(raft_state_->prevlogindex(idx)); // Get -1 for first term
         req->set_prevlogterm(raft_state_->prevlogterm(idx)); // Get -1 for first term
         // Put log in [matched_log_size_,log.size()) into heart beat message
-        for (int log_idx = raft_state_->matched_log_size_[idx]; log_idx < raft_state_->log_.size(); log_idx++) {
+        for (int log_idx = raft_state_->matched_log_size_[idx]; log_idx < std::min((int)raft_state_->log_.size(), raft_state_->matched_log_size_[idx] + MAX_ENTRY_SIZE); log_idx++) {
             Entry* entry = req->add_entries();
             entry->set_term(raft_state_->log_[log_idx].term);
             entry->set_index(raft_state_->log_[log_idx].index);
