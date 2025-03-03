@@ -5,7 +5,7 @@ import subprocess
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    server_executable = os.path.join(script_dir, "build/RaftServer")
+    server_executable = os.path.join(script_dir, "../build/RaftServer")
 
     if not os.path.exists(server_executable):
         print(f"Error: Server executable not found at {server_executable}")

@@ -6,7 +6,7 @@ import subprocess
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     venv_python = os.path.join(script_dir, "../build/venv/bin/python")
-    client_script = os.path.join(script_dir, "../client/client.py")
+    client_script = os.path.join(script_dir, "../client/routingservice.py")
 
     if not os.path.exists(venv_python):
         print(f"Error: Virtual environment not found at {venv_python}")
