@@ -145,8 +145,11 @@ class Client:
         print(f"Retrieving balance for user {user_id} from all servers...")
         print('-'*30)
         balance_res =  TransactionHandler.get_balance(user_id)
-        for i in range(len(balance_res)):
-            print(f"   clusterId: {balance_res[i][0]}, serverId: {balance_res[i][1]}, balance: ${balance_res[i][2]}")
+        for i in range(len(balance_res)): 
+            if balance_res[i][2] == utils.TIMEOUT_ERROR:
+                print(f"   clusterId: {balance_res[i][0]}, serverId: {balance_res[i][1]}, timeout")
+            else:
+                print(f"   clusterId: {balance_res[i][0]}, serverId: {balance_res[i][1]}, balance: ${balance_res[i][2]}")
             print('-'*30)
 
 
@@ -158,8 +161,11 @@ class Client:
         for i in range(len(datastore_res)):
             cluster_id = LocalConfig.get_cluster_id_for_server(i)
             print(f"   clusterId: {cluster_id}, serverId: {i}")
-            for entry in datastore_res[i]:
-                print(f"   term: {entry[2]}, index: {entry[3]}, command: {entry[4]}")
+            if datastore_res[i] == utils.TIMEOUT_ERROR:
+                print(f"   timeout")
+            else:
+                for entry in datastore_res[i]:
+                    print(f"   term: {entry[2]}, index: {entry[3]}, command: {entry[4]}")
             print('-'*30)
 
 

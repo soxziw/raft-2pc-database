@@ -10,6 +10,7 @@ CLIENT_TIMEOUT = 10
 BUFFER_SIZE = 1024
 DEFAULT_BALANCE = 10.0
 JOB_INTERVAL = 0.1
+TIMEOUT_ERROR = "TIMEOUT"
 
 
 class CrossShardPhaseType:
@@ -22,7 +23,7 @@ def get_current_time(fmt='%Y-%m-%dT%H:%M:%S'):
     """Get current time in specific string format"""
     return datetime.now().strftime(fmt)
 
-def send_message(hostname: str, port: int, message: bytes, with_response=True) -> bytes:
+def send_message(hostname: str, port: int, message: bytes, with_response=True, return_timeout=False) -> bytes:
     """Using TCP as the message passing protocol with proper error handling."""
     response = None
     try:
@@ -32,22 +33,30 @@ def send_message(hostname: str, port: int, message: bytes, with_response=True) -
             s.setblocking(False)
 
             # Wait for the socket to be writable
-            _, writable, _ = select.select([], [s], [], 5)  # 5s timeout
+            _, writable, _ = select.select([], [s], [], 1)  # 5s timeout
             if not writable:
+                # if return_timeout:
+                #     return "TIMEOUT"
                 raise TimeoutError("Socket not ready for writing")
             
             s.sendall(message)  # sendall ensures the full message is sent
 
             if with_response:
                 # Wait for the socket to be readable
-                readable, _, _ = select.select([s], [], [], 5)
+                readable, _, _ = select.select([s], [], [], 1)
                 if not readable:
+                    # if return_timeout:
+                    #     return "TIMEOUT"
                     raise TimeoutError("Socket not ready for reading")
 
                 response = s.recv(BUFFER_SIZE)
     except socket.timeout:
+        if return_timeout:
+            return TIMEOUT_ERROR
         raise TimeoutError("Socket operation timed out")
     except BlockingIOError:
+        if return_timeout:
+            return TIMEOUT_ERROR
         raise RuntimeError("Non-blocking socket operation failed (BlockingIOError)")
     return response
     

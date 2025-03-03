@@ -82,9 +82,9 @@ class TransactionHandler:
             server_id = LocalConfig.num_server_per_cluster * cluster_id + i
             print(f"Retrieving balance for {user_id} from cluster {cluster_id} and server {server_id}...")
             message = printBalanceReqSerializer.to_str(clusterId=cluster_id,serverId=server_id , dataItemID=user_id)
-            response = utils.send_message(ip, port, message, with_response=True)
-            print_balance_response = printBalanceRspSerializer.parse(response)
-            balance_res.append((print_balance_response.clusterId, print_balance_response.serverId, print_balance_response.balance))
+            response = utils.send_message(ip, port, message, with_response=True, return_timeout=True)
+            balance = utils.TIMEOUT_ERROR if response == utils.TIMEOUT_ERROR else printBalanceRspSerializer.parse(response).balance
+            balance_res.append((cluster_id, server_id, balance))
         return balance_res
 
         
@@ -102,11 +102,14 @@ class TransactionHandler:
                 print(f"Retrieving datastore for from cluster {cluster_id} and server {server_id}...")
                 message = printDatastoreReqSerializer.to_str(clusterId=cluster_id, serverId=server_id)
                 print(printDatastoreReqSerializer.parse(message))
-                response = utils.send_message(ip, port, message, with_response=True)
-                print_datastore_response = printDatastoreRspSerializer.parse(response)
-                for entry in print_datastore_response.entries:
-                    datastore_per_server.append((cluster_id, server_id, entry.term, entry.index, entry.command))
-                datastore_res.append(datastore_per_server)
+                response = utils.send_message(ip, port, message, with_response=True, return_timeout=True)
+                if response == utils.TIMEOUT_ERROR:
+                    datastore_res.append(utils.TIMEOUT_ERROR)
+                else:
+                    entries = printDatastoreRspSerializer.parse(response).entries
+                    for entry in entries:
+                        datastore_per_server.append((cluster_id, server_id, entry.term, entry.index, entry.command))
+                    datastore_res.append(datastore_per_server)
         return datastore_res
     
     @classmethod
