@@ -102,14 +102,12 @@ void CrossShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> 
         // Commit transaction
         if (req.senderclusterid() == raft_state->cluster_id_) {
             raft_state->local_balance_tb_[req.senderid()] -= req.amount();
+            raft_state->modify_items_.insert(req.senderid());
         }
         if (req.receiverclusterid() == raft_state->cluster_id_) {
             raft_state->local_balance_tb_[req.receiverid()] += req.amount();
+            raft_state->modify_items_.insert(req.receiverid());
         }
-
-        // Update data shard after commit
-        update_data_shard(raft_state);
-        std::printf("[%d:%d][CrossShardReq:%d] Update data shard after commit.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);
         
         // Generate response 
         WrapperMessage* wrapper_msg = new WrapperMessage;

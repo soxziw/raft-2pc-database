@@ -37,20 +37,19 @@ void load_data_shard(std::shared_ptr<RaftState> raft_state) {
     }
 
     // Split buffer into lines
-    std::vector<std::string> lines;
     size_t start = 0;
     for (size_t i = 0; i < bytes_read; ++i) {
         if (buffer[i] == '\n') {
-            lines.push_back(std::string(buffer.begin() + start, buffer.begin() + i));
+            raft_state->balance_jsonl_.push_back(std::string(buffer.begin() + start, buffer.begin() + i));
             start = i + 1;
         }
     }
     if (start < bytes_read) {
-        lines.push_back(std::string(buffer.begin() + start, buffer.begin() + bytes_read));
+        raft_state->balance_jsonl_.push_back(std::string(buffer.begin() + start, buffer.begin() + bytes_read));
     }
 
     // Load data items into local balance table
-    for (const auto& line : lines) {
+    for (const auto& line : raft_state->balance_jsonl_) {
         try {
             nlohmann::json j = nlohmann::json::parse(line);
             int id = j["id"];
@@ -66,44 +65,23 @@ void load_data_shard(std::shared_ptr<RaftState> raft_state) {
     close(fd);
 }
 
-void update_data_shard(std::shared_ptr<RaftState> raft_state) {
+void update_data_shard(std::shared_ptr<RaftState> raft_state, std::shared_ptr<AsyncIO> aio) {
+    if (raft_state->modify_items_.empty()) {
+        return;
+    }
+    
     std::printf("[%d:%d] Update data shard.\n", raft_state->cluster_id_, raft_state->server_id_);
     // Open data shard file with read only permission
-    std::filesystem::path file_path = std::filesystem::path(DATA_SHARD_BASE) / ("dataShard" + std::to_string(raft_state->cluster_id_) + ".nlohmann::jsonl");
+    std::filesystem::path file_path = std::filesystem::path(DATA_SHARD_BASE) / ("dataShard" + std::to_string(raft_state->cluster_id_) + ".jsonl");
     int fd = open(file_path.c_str(), O_RDWR);
-    struct stat file_stat;
-    if (fstat(fd, &file_stat) == -1) {
-        close(fd);
-        return;
-    }
-
-    // Read whole file into buffer
-    off_t file_size = file_stat.st_size;
-    std::vector<char> buffer(file_size);
-    ssize_t bytes_read = read(fd, buffer.data(), file_size);
-    if (bytes_read == -1) {
-        close(fd);
-        return;
-    }
-
-    // Split buffer into lines
-    std::vector<std::string> lines;
-    size_t start = 0;
-    for (size_t i = 0; i < bytes_read; ++i) {
-        if (buffer[i] == '\n') {
-            lines.push_back(std::string(buffer.begin() + start, buffer.begin() + i));
-            start = i + 1;
-        }
-    }
-    if (start < bytes_read) {
-        lines.push_back(std::string(buffer.begin() + start, buffer.begin() + bytes_read));
-    }
 
     // Update balance of each data items
-    for (const auto& line : lines) {
+    for (const auto& item_id : raft_state->modify_items_) {
         try {
-            nlohmann::json j = nlohmann::json::parse(line);
-            j["balance"] = raft_state->local_balance_tb_[j["id"]];
+            nlohmann::json j = nlohmann::json::parse(raft_state->balance_jsonl_[item_id - 1]);
+            j["units"] = raft_state->local_balance_tb_[item_id];
+            // Convert the updated JSON back to string and replace the line
+            raft_state->balance_jsonl_[item_id - 1] = j.dump();
         } catch (const nlohmann::json::exception& e) {
             std::printf("%s", fmt::format("nlohmann::json parsing error: {}\n", e.what()).c_str());
             continue;
@@ -117,17 +95,14 @@ void update_data_shard(std::shared_ptr<RaftState> raft_state) {
     }
     lseek(fd, 0, SEEK_SET);
 
-    // Write new lines into file
-    for (const auto& line : lines) {
-        std::string json_str = line + "\n";
-        if (write(fd, json_str.c_str(), json_str.length()) == -1) {
-            close(fd);
-            return;
-        }
+    // Write all lines at once using io_uring
+    std::string all_content;
+    for (const auto& line : raft_state->balance_jsonl_) {
+        all_content += line + "\n";
     }
-
-    // Close file descriptor
-    close(fd);
+    
+    aio->add_file_write_request(fd, all_content);
+    raft_state->modify_items_.clear();
 }
 
 void serialize_msg_to_buf(WrapperMessage*& wrapper_msg, char*& buf, int& buf_size) {

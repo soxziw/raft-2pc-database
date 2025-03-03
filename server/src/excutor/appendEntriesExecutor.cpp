@@ -128,6 +128,8 @@ void AppendEntriesExecutor::executeRsp(int client_socket, std::shared_ptr<AsyncI
                             std::sscanf(raft_state->log_[idx].command.c_str(), "%d pays %d $%d", &sender_id, &receiver_id, &amount);
                             raft_state->local_balance_tb_[sender_id] -= amount;
                             raft_state->local_balance_tb_[receiver_id] += amount;
+                            raft_state->modify_items_.insert(sender_id);
+                            raft_state->modify_items_.insert(receiver_id);
                             raft_state->local_lock_[sender_id] = false;
                             raft_state->local_lock_[receiver_id] = false;
 
@@ -143,12 +145,7 @@ void AppendEntriesExecutor::executeRsp(int client_socket, std::shared_ptr<AsyncI
                         }
                         std::printf("[%d:%d][AppendEntriesRsp:%d] Commit: %s.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_, raft_state->log_[idx].command.c_str());
                     }
-                    if (raft_state->commit_index_ != new_commit_index) {
-                        // Update data shard after commit
-                        update_data_shard(raft_state);
-                        std::printf("[%d:%d][AppendEntriesRsp:%d] Update data shard after commit.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);
-                        raft_state->commit_index_ = new_commit_index;
-                    }
+                    raft_state->commit_index_ = new_commit_index;
                 }
             } else { // Fail, decrease matched log size
                 std::printf("[%d:%d][AppendEntriesRsp:%d] Fail, decrease matched log size.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);

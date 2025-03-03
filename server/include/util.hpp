@@ -2,6 +2,7 @@
 #include <string>
 
 #include "raftState.hpp"
+#include "asyncIO.hpp"
 #include "wrapperMessage.pb.h"
 
 /**
@@ -25,7 +26,7 @@ void load_data_shard(std::shared_ptr<RaftState> raft_state);
  *
  * @param raft_state raft state to dump.
  */
-void update_data_shard(std::shared_ptr<RaftState> raft_state);
+void update_data_shard(std::shared_ptr<RaftState> raft_state, std::shared_ptr<AsyncIO> aio);
 
 /**
  * serialize_msg_to_buf - Serialize protobuf message into char array buffer.

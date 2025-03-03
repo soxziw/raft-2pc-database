@@ -157,12 +157,46 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Wait for command from terminal
-    cmd(server_ip_port_pairs);
-
-    // Wait for all server processes to finish
-    for (pid_t pid : server_pids) {
-        waitpid(pid, nullptr, 0);
+    // Monitor server processes
+    while (true) {
+        int status;
+        pid_t crashed_pid = waitpid(-1, &status, 0);
+        
+        if (crashed_pid > 0) {
+            // Find which server crashed
+            int server_index = -1;
+            for (int i = 0; i < server_pids.size(); i++) {
+                if (server_pids[i] == crashed_pid) {
+                    server_index = i;
+                    break;
+                }
+            }
+            
+            if (server_index != -1) {
+                int cluster_id = server_index / SERVER_NUM_PER_CLUSTER;
+                int server_id = cluster_id * SERVER_NUM_PER_CLUSTER + server_index % SERVER_NUM_PER_CLUSTER;
+                
+                std::printf("[Monitor] Server %d in cluster %d (PID: %d) crashed. Restarting...\n", 
+                            server_id, cluster_id, crashed_pid);
+                
+                // Restart the crashed server
+                pid_t new_pid = fork();
+                if (new_pid == 0) {
+                    // Child process: create and run server
+                    AIOServer server(cluster_id, server_id, routing_service_ip_port_pair, 
+                                    server_ip_port_pairs, message_timeout_ms);
+                    return 0;
+                } else if (new_pid > 0) {
+                    // Update the PID in the parent's list
+                    server_pids[server_index] = new_pid;
+                    std::printf("[Monitor] Server %d in cluster %d restarted with PID: %d\n", 
+                                server_id, cluster_id, new_pid);
+                } else {
+                    std::printf("[Error] Failed to restart server %d in cluster %d\n", 
+                                server_id, cluster_id);
+                }
+            }
+        }
     }
-    _exit(0);
+    return 0;
 }

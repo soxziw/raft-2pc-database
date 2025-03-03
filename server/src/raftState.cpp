@@ -1,8 +1,8 @@
 #include "raftState.hpp"
 
 RaftState::RaftState(int cluster_id, int server_id) : cluster_id_(cluster_id), server_id_(server_id),
-    heard_heart_beat_(false), current_term_(0), voted_for_(-1), role_(Role::FOLLOWER), vote_granted_num_(0), 
-    log_(), commit_index_(-1), matched_log_size_(), local_balance_tb_(), local_lock_() {};
+    heard_heart_beat_(false), current_term_(0), voted_for_(-1), role_(Role::FOLLOWER), vote_granted_num_(0), log_(), 
+    commit_index_(-1), matched_log_size_(), local_balance_tb_(), local_lock_(), balance_jsonl_{}, modify_items_{} {};
 
 int RaftState::lastlogindex() {
     return log_.empty() ? -1 : log_.back().index;

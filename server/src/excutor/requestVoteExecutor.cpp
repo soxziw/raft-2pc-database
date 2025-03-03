@@ -1,5 +1,6 @@
 #include "executor/requestVoteExecutor.hpp"
 #include "asyncIO.hpp"
+#include "aIOServer.hpp"
 
 
 void RequestVoteExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const RequestVoteReq& req) {
@@ -41,6 +42,7 @@ void RequestVoteExecutor::executeRsp(int client_socket, std::shared_ptr<AsyncIO>
             if (raft_state->vote_granted_num_ >= 2) { // Reach majority, become leader
                 raft_state->role_ = Role::LEADER;
                 raft_state->matched_log_size_ = std::vector<int>(3, raft_state->log_.size());
+                aio->add_dump_data_request(DUMP_DATA_INTERVAL_S);
                 std::printf("[%d:%d][RequestVoteRsp:%d] Reach majority, become leader.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);
             }
         }

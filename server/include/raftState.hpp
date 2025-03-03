@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 /**
  * LogEntry - Entry that store each log item.
@@ -40,6 +41,8 @@ public:
     std::vector<int> matched_log_size_; // Matched log size for each server
     std::unordered_map<int, int> local_balance_tb_; // Local balance table
     std::unordered_map<int, bool> local_lock_; // Local lock for data items
+    std::vector<std::string> balance_jsonl_; // Balance json lines
+    std::unordered_set<int> modify_items_; // Modified items to dump
 
     /**
      * RaftState - Initialization.

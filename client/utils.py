@@ -43,7 +43,7 @@ def send_message(hostname: str, port: int, message: bytes, with_response=True, r
 
             if with_response:
                 # Wait for the socket to be readable
-                readable, _, _ = select.select([s], [], [], 1)
+                readable, _, _ = select.select([s], [], [], 5)
                 if not readable:
                     # if return_timeout:
                     #     return "TIMEOUT"

@@ -13,6 +13,7 @@ enum AIOEventType {
     EVENT_READ = 3, // Read from socket
     EVENT_WRITE = 4, // Write to socket
     EVENT_TIMEOUT = 5, // Timeout
+    EVENT_DUMPDATA = 6, // Dump data into file
 };
 
 /**
@@ -56,11 +57,11 @@ public:
     void set_nonblocking(int sockfd);
 
     /**
-     * set_timer - Set timeout for submit queue entry.
+     * add_dump_data_request - Add data dumping event, periodically wakeup.
      *
-     * @param sqe
+     * @param interval_ms
      */
-    void set_timer(struct io_uring_sqe*& sqe);
+    void add_dump_data_request(int interval_ms);
 
     /**
      * add_timeout_request - Add timeout event, periodically wakeup.
@@ -112,6 +113,8 @@ public:
      * @param msg_type type of message
      */
     void add_write_request_msg(int client_socket, WrapperMessage*& wrapper_msg, AIOMessageType msg_type);
+
+    void add_file_write_request(int fd, const std::string& content);
 
     struct io_uring ring_; // io_uring object
     int message_timeout_ms_; // timeout for reading and writing

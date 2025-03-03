@@ -156,7 +156,7 @@ void AIOServer::run(int server_socket) {
         }
 
         AIOData* data = (AIOData*)io_uring_cqe_get_data(cqe);
-        if (cqe->res == -ETIME && data->event_type != AIOEventType::EVENT_TIMEOUT) {
+        if (cqe->res == -ETIME && data->event_type != AIOEventType::EVENT_TIMEOUT && data->event_type != AIOEventType::EVENT_DUMPDATA) {
             io_uring_cqe_seen(&(aio_->ring_), cqe);
             continue;
         }
@@ -179,6 +179,15 @@ void AIOServer::run(int server_socket) {
                         broadcast_heart_beat();
                         aio_->add_timeout_request(HEAT_BEAT_INTERVAL_MS);
                     }
+                }
+                delete data;
+                break;
+            }
+            case AIOEventType::EVENT_DUMPDATA: {
+                if (raft_state_->role_ == Role::LEADER) {
+                    aio_->add_dump_data_request(DUMP_DATA_INTERVAL_S);
+                    std::printf("[%d:%d][EVENT] Dump data into file.\n", cluster_id_, server_id_);
+                    update_data_shard(raft_state_, aio_);
                 }
                 delete data;
                 break;

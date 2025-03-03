@@ -60,8 +60,8 @@ class Client:
                 self.print_balance(int(user))
             elif re.match(r'datastore|ds', cmd):
                 self.print_data_store()
-            elif re.match(r'performance|p', cmd):
-                asyncio.run(self.print_performance())
+            elif re.match(r'performance|p\s+(intra|cross)', cmd):
+                asyncio.run(self.print_performance(cmd.split()[1]))
                 # import threading
                 # thread = threading.Thread(target=lambda: asyncio.run(self.start_test()))
                 # thread.daemon = True
@@ -210,19 +210,20 @@ class Client:
 
 
         
-    async def print_performance(self):
+    async def print_performance(self, mode:str):
         """Prints throughput and latency from the time the client initiates a transaction to the time the client process receives a reply message."""                    
         script_dir = os.path.dirname(os.path.abspath(__file__))  # Get current script directory
         intra_shard_file_path = os.path.join(script_dir, '../test/intra_shard_test_1500.txt')
         cross_shard_file_path = os.path.join(script_dir, '../test/cross_shard_test_1500.txt')
 
-        print("Start load testing for intra-shard transactions...")
-        logging.info("Start load testing for intra-shard transactions...")
-        await self.start_test(intra_shard_file_path, is_load_test=True)
-
-        print("Start load testing for cross-shard transactions...")
-        logging.info("Start load testing for cross-shard transactions...")
-        await self.start_test(cross_shard_file_path, is_load_test=True)
+        if mode == "intra":
+            print("Start load testing for intra-shard transactions...")
+            logging.info("Start load testing for intra-shard transactions...")
+            await self.start_test(intra_shard_file_path, is_load_test=True)
+        else:
+            print("Start load testing for cross-shard transactions...")
+            logging.info("Start load testing for cross-shard transactions...")
+            await self.start_test(cross_shard_file_path, is_load_test=True)
 
 
     def stop_server(self, server_id):
