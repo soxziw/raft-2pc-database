@@ -179,7 +179,8 @@ class Client:
                     task = self.create_single_transfer(int(sender), int(recipient), int(amount))
                     tasks.append(task)  # Collect async tasks
                 except ValueError:
-                    print("Invalid transfer command")
+                    if not line.strip().startswith("//"):
+                        print("Invalid transfer command")
                     continue
         start_time = time.time()  # Record global start time
         latencies = await asyncio.gather(*tasks)  # Execute all requests concurrently
