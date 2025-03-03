@@ -60,8 +60,6 @@ class RoutingService:
 
         # store the latency of the cross-shard transaction request
         self.conn_for_cross = {}
-        self.latency_phase1 = {}
-        self.latency_phase2 = {}
 
     def start(self):
         """Start the routing service asynchronously in a new thread."""
@@ -195,7 +193,6 @@ class RoutingService:
                 cross_shard_req.amount,
                 self.transaction_id
             )
-            self.latency_phase1[self.transaction_id] = time.time()
 
             self.num_reply_for_2PC[self.transaction_id] = 0
             #self.latency_for_cross.append(PerformanceMetricPerRequest(len(request_message)))
@@ -272,16 +269,12 @@ class RoutingService:
             self.num_reply_for_2PC[id] += 1
             print(f"Transaction request now gets {self.num_reply_for_2PC[id]} YES from leaders...")
             if self.num_reply_for_2PC[id] == 2:
-                if id in self.latency_phase1:
-                    self.latency_phase1[id] = time.time() - self.latency_phase1[id]
                 # collect all votes, enter 2PC COMMIT phase
                 await self.broadcast_commit_message(request_message)
 
         elif cross_shard_response.result == CrossShardResultType.NO:
             # remove request from the other cluster if there is
             id = cross_shard_response.id
-            if id in self.latency_phase1:
-                    self.latency_phase1[id] = time.time() - self.latency_phase1[id]
             # cluster_to_remove = sender_cluster_id if receiver_cluster_id == cluster_id else receiver_cluster_id
             # self.transaction_request[cluster_to_remove - 1].remove(request_message)
             if self.num_reply_for_2PC[id] != -1:
@@ -303,7 +296,7 @@ class RoutingService:
         sender_cluster_id, receiver_cluster_id = cross_shard_req.senderClusterId, cross_shard_req.receiverClusterId
 
         print(f"Broadcasting COMMIT to all servers in cluster {sender_cluster_id} and cluster {receiver_cluster_id}...")
-        self.latency_phase2[cross_shard_req.id] = time.time()
+        
         tasks = []
         for i in range(LocalConfig.num_server_per_cluster):
             ip, port = LocalConfig.server_ip_port_list[sender_cluster_id][i]
@@ -317,7 +310,6 @@ class RoutingService:
             print(results)
         except Exception as e:
             print(f"Exception caught: {e}")
-        self.latency_phase2[cross_shard_req.id] = time.time() - self.latency_phase2[cross_shard_req.id]
         #print("\033[32mTransaction SUCCEED\033[0m")
         #self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()
         writer = self.conn_for_cross[cross_shard_req.id]
@@ -336,7 +328,7 @@ class RoutingService:
                                                  cross_shard_req.senderId, cross_shard_req.receiverId, cross_shard_req.amount, cross_shard_req.id)
         sender_cluster_id, receiver_cluster_id = cross_shard_req.senderClusterId, cross_shard_req.receiverClusterId
         print(f"Broadcasting ABORT to all servers in cluster {sender_cluster_id} and cluster {receiver_cluster_id}...")
-        self.latency_phase2[cross_shard_req.id] = time.time()
+        
         tasks = []
         for i in range(LocalConfig.num_server_per_cluster):
             ip, port = LocalConfig.server_ip_port_list[sender_cluster_id][i]
@@ -350,7 +342,7 @@ class RoutingService:
             print(results)
         except Exception as e:
             print(f"Exception caught: {e}")
-        self.latency_phase2[cross_shard_req.id] = time.time() - self.latency_phase2[cross_shard_req.id]
+        
         #self.latency_for_cross[cross_shard_req.id - 1].calculate_latency_and_throughput()
         writer = self.conn_for_cross[cross_shard_req.id]
         writer.write("Transaction ABORTED".encode())

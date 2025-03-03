@@ -213,9 +213,8 @@ class Client:
     async def print_performance(self):
         """Prints throughput and latency from the time the client initiates a transaction to the time the client process receives a reply message."""                    
         script_dir = os.path.dirname(os.path.abspath(__file__))  # Get current script directory
-        intra_shard_file_path = os.path.join(script_dir, '../test/intra_shard_test_1000.txt')
-        cross_shard_file_path = os.path.join(script_dir, '../test/cross_shard_test_500.txt')
-        intra_cross_shard_file_path = os.path.join(script_dir, '../test/intra_cross_shard_test_500.txt')
+        intra_shard_file_path = os.path.join(script_dir, '../test/intra_shard_test_1500.txt')
+        cross_shard_file_path = os.path.join(script_dir, '../test/cross_shard_test_1500.txt')
 
         print("Start load testing for intra-shard transactions...")
         logging.info("Start load testing for intra-shard transactions...")
@@ -224,23 +223,6 @@ class Client:
         print("Start load testing for cross-shard transactions...")
         logging.info("Start load testing for cross-shard transactions...")
         await self.start_test(cross_shard_file_path, is_load_test=True)
-
-        # phase1_latencies = 0
-        # phase2_latencies = 0
-        # num_requests = len(self.routing_service.latency_phase1)
-        # for id, latency in self.routing_service.latency_phase1.items():
-        #     phase1_latencies += latency
-        # for id, latency in self.routing_service.latency_phase2.items():
-        #     phase2_latencies += latency
-
-        # avg_latency_phase1 = phase1_latencies / num_requests if num_requests > 0 else 0
-        # avg_latency_phase2 = phase2_latencies / num_requests if num_requests > 0 else 0
-        # print(f"Phase1 Average Latency: {avg_latency_phase1:.4f} seconds")
-        # print(f"Phase2 Average Latency: {avg_latency_phase2:.4f} seconds")
-
-        print("Start load testing for intra-shard and cross-shard transactions...")
-        logging.info("Start load testing for intra-shard and cross-shard transactions...")
-        await self.start_test(intra_cross_shard_file_path, is_load_test=True)
 
 
     def stop_server(self, server_id):
