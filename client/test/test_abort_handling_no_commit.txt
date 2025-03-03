@@ -1,2 +1,0 @@
-// No commitment if any cluster aborts
-(1, 1001, 100)

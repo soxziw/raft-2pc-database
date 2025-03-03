@@ -1,0 +1,5 @@
+// C2 is partitioned
+// stop 3
+// stop 4
+// stop 5
+(200, 1500, 2)

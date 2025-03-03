@@ -1,0 +1,4 @@
+//  C1 loses majority
+// stop 1
+// stop 2
+(200, 100, 1)

@@ -1,0 +1,3 @@
+// crash 1 out of 3 nodes in C1
+// stop 1
+(200, 100, 1)
