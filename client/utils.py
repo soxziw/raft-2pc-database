@@ -43,7 +43,7 @@ def send_message(hostname: str, port: int, message: bytes, with_response=True, r
 
             if with_response:
                 # Wait for the socket to be readable
-                readable, _, _ = select.select([s], [], [], LocalConfig.clients_message_round_trip_timeout_s)
+                readable, _, _ = select.select([s], [], [], LocalConfig.clients_sync_message_round_trip_timeout_s)
                 if not readable:
                     # if return_timeout:
                     #     return "TIMEOUT"
@@ -75,7 +75,7 @@ async def send_message_async(hostname: str, port: int, message: bytes, with_resp
         await writer.drain()  # Ensure the message is sent before proceeding
 
         if with_response:
-            response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=LocalConfig.clients_message_round_trip_timeout_s)
+            response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=LocalConfig.clients_async_message_round_trip_timeout_s)
 
     except asyncio.exceptions.TimeoutError:
         raise TimeoutError("Timeout transaction")

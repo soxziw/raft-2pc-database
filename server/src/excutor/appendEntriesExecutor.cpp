@@ -120,8 +120,7 @@ void AppendEntriesExecutor::executeRsp(int client_socket, std::shared_ptr<AsyncI
             if (rsp.success()) { // Success
                 raft_state->matched_log_size_[rsp.serverid() % SERVER_NUM_PER_CLUSTER] = rsp.matchlogsize();
                 int new_commit_index = find_majority_midpoint(raft_state->matched_log_size_) - 1;
-                
-                if (new_commit_index >= 0 && raft_state->log_[new_commit_index].term == raft_state->current_term_) { // Reach majority and last log in current term
+                if (new_commit_index > raft_state->commit_index_ && raft_state->log_[new_commit_index].term == raft_state->current_term_) { // Reach majority and last log in current term
                     std::printf("[%d:%d][AppendEntriesRsp:%d] Reach majority and last log in current term.\n", raft_state->cluster_id_, raft_state->server_id_, raft_state->current_term_);
                     for (int idx = raft_state->commit_index_ + 1; idx <= new_commit_index; idx++) {
                         if (raft_state->log_[idx].command[0] == '[') { // Cross-shard transactions

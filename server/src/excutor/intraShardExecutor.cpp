@@ -2,6 +2,7 @@
 
 #include "executor/intraShardExecutor.hpp"
 #include "asyncIO.hpp"
+#include "configs.hpp"
 
 
 void IntraShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const IntraShardReq& req) {
@@ -45,6 +46,7 @@ void IntraShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> 
             client_socket
         }
     );
+    raft_state->matched_log_size_[raft_state->server_id_ % SERVER_NUM_PER_CLUSTER]++;
 
     // Lock data items
     raft_state->local_lock_[req.senderid()] = true;

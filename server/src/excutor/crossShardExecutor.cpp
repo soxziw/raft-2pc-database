@@ -3,6 +3,7 @@
 #include "executor/crossShardExecutor.hpp"
 #include "asyncIO.hpp"
 #include "utils.hpp"
+#include "configs.hpp"
 
 
 void CrossShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const CrossShardReq& req) {
@@ -61,6 +62,7 @@ void CrossShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> 
                 client_socket
             }
         );
+        raft_state->matched_log_size_[raft_state->server_id_ % SERVER_NUM_PER_CLUSTER]++;
 
         // Lock data items
         if (req.senderclusterid() == raft_state->cluster_id_) {
@@ -96,6 +98,9 @@ void CrossShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> 
                 -1
             }
         );
+        if (raft_state->role_ == Role::LEADER) {
+            raft_state->matched_log_size_[raft_state->server_id_ % SERVER_NUM_PER_CLUSTER]++;
+        }
 
         // Commit transaction
         if (req.senderclusterid() == raft_state->cluster_id_) {
@@ -141,6 +146,9 @@ void CrossShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> 
                 -1
             }
         );
+        if (raft_state->role_ == Role::LEADER) {
+            raft_state->matched_log_size_[raft_state->server_id_ % SERVER_NUM_PER_CLUSTER]++;
+        }
 
         // Generate response
         WrapperMessage* wrapper_msg = new WrapperMessage;

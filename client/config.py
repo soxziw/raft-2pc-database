@@ -20,7 +20,8 @@ class LocalConfig:
     server_ip_port_list = [[0] * 3 for _ in range(num_cluster)]
 
     clients_socket_connect_timeout_s = int(CONFIG['CLIENTS']['SOCKET_CONNECT_TIMEOUT_S'])
-    clients_message_round_trip_timeout_s = int(CONFIG['CLIENTS']['MESSAGE_ROUND_TRIP_TIMEOUT_S']) 
+    clients_sync_message_round_trip_timeout_s = int(CONFIG['CLIENTS']['SYNC_MESSAGE_ROUND_TRIP_TIMEOUT_S']) 
+    clients_async_message_round_trip_timeout_s = int(CONFIG['CLIENTS']['ASYNC_MESSAGE_ROUND_TRIP_TIMEOUT_S']) 
     routing_service_message_round_trip_timeout_s = int(CONFIG['ROUTING_SERVICE']['MESSAGE_ROUND_TRIP_TIMEOUT_S']) 
     
     
