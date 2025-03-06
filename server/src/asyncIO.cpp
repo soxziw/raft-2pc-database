@@ -103,12 +103,12 @@ void AsyncIO::add_read_request(int client_socket) {
 
     set_nonblocking(client_socket);
 
-    char* buf = new char[1024]{};
+    char* buf = new char[4096]{};
 
     // Generate read metadata
-    AIOData* data = new AIOData{client_socket, AIOEventType::EVENT_READ, buf, 1024, AIOMessageType::NONE};
+    AIOData* data = new AIOData{client_socket, AIOEventType::EVENT_READ, buf, 4096, AIOMessageType::NONE};
     struct io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
-    io_uring_prep_read(sqe, client_socket, buf, 1024, 0);
+    io_uring_prep_read(sqe, client_socket, buf, 4096, 0);
     io_uring_sqe_set_data(sqe, data);
 
     int ret = io_uring_submit(&ring_);

@@ -37,6 +37,7 @@ void RequestVoteExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO>
 }
 
 void RequestVoteExecutor::executeRsp(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const RequestVoteRsp& rsp) {
+    std::printf("[%d:%d][DETAIL] RequestVoteRsp: term=%d, voteGranted=%d\n", raft_state->cluster_id_, raft_state->server_id_, rsp.term(), rsp.votegranted());
     if (raft_state->role_ == Role::CANDIDATE) { // Still remain as candidate
         if (rsp.term() == raft_state->current_term_ && rsp.votegranted()) {
             raft_state->vote_granted_num_++;

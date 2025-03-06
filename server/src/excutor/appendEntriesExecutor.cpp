@@ -115,6 +115,7 @@ int find_majority_midpoint(const std::vector<int>& matched_log_size) {
 }
 
 void AppendEntriesExecutor::executeRsp(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const AppendEntriesRsp& rsp) {
+    std::printf("[%d:%d][DETAIL] AppendEntriesRsp: term=%d, success=%d, matchLogSize=%d, serverId=%d\n", raft_state->cluster_id_, raft_state->server_id_, rsp.term(), rsp.success(), rsp.matchlogsize(), rsp.serverid());
     if (raft_state->role_ == Role::LEADER) { // Still remain leader
         if (rsp.term() == raft_state->current_term_) { // Remain in same term
             if (rsp.success()) { // Success

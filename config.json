@@ -58,7 +58,7 @@
     ],
     "HEAT_BEAT_INTERVAL_MS": 100,
     "TERM_TIMEOUT_MS": 200,
-    "MAX_APPEND_ENTRY_SIZE": 20,
+    "MAX_APPEND_ENTRY_SIZE": 30,
     "IS_DUMP_DATA": false,
     "DUMP_DATA_INTERVAL_S": 5
   }

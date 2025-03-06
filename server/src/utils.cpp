@@ -116,10 +116,20 @@ void serialize_msg_to_buf(WrapperMessage*& wrapper_msg, char*& buf, int& buf_siz
     buf_size = serialized.size();
 }
 
+bool ParseLargeProtoFromArray(const void *data, int size, WrapperMessage *& message) {
+    google::protobuf::io::CodedInputStream coded_input(
+        reinterpret_cast<const uint8_t*>(data), size);
+
+    coded_input.SetTotalBytesLimit(4096); // 4KB
+
+    return message->ParseFromCodedStream(&coded_input);
+}
+
 void parse_buf_to_msg(WrapperMessage*& wrapper_msg, char*& buf, int& buf_size) {
     // Create and parse message object
     wrapper_msg = new WrapperMessage;
-    wrapper_msg->ParseFromArray(buf, buf_size);
+    // wrapper_msg->ParseFromArray(buf, buf_size);
+    ParseLargeProtoFromArray(buf, buf_size, wrapper_msg);
 
     // Delete buffer object
     delete[] buf;
