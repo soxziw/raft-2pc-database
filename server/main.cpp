@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <arpa/inet.h>
 
+#include "configs.hpp"
 #include "nlohmann/json.hpp"
 #include "aIOServer.hpp"
 #include "exit.pb.h"
@@ -76,7 +77,6 @@ void cmd(std::vector<std::vector<std::pair<std::string, int>>> server_ip_port_pa
 int main(int argc, char* argv[]) {
     std::pair<std::string, int> routing_service_ip_port_pair = {};
     std::vector<std::vector<std::pair<std::string, int>>> server_ip_port_pairs = {};
-    int message_timeout_ms = 1000;
 
     // Read config from config.json
     int fd = open(CONFIG_PATH, O_RDONLY);
@@ -98,27 +98,32 @@ int main(int argc, char* argv[]) {
 
     nlohmann::json config = nlohmann::json::parse(json_str);
 
+    // Get configuration values
+    SERVER_NUM_PER_CLUSTER = config["SERVERS"]["IP_PORT_PAIRS"][0].size();
+    HEAT_BEAT_INTERVAL_MS = config["SERVERS"]["HEAT_BEAT_INTERVAL_MS"];
+    TERM_TIMEOUT_MS = config["SERVERS"]["TERM_TIMEOUT_MS"];
+    MAX_APPEND_ENTRY_SIZE = config["SERVERS"]["MAX_APPEND_ENTRY_SIZE"];
+    IS_DUMP_DATA = config["SERVERS"]["IS_DUMP_DATA"];
+    DUMP_DATA_INTERVAL_S = config["SERVERS"]["DUMP_DATA_INTERVAL_S"];
+
     // Initialize routing service config
     routing_service_ip_port_pair = {
-        config["ROUTING_SERVICE"]["IP"],
-        config["ROUTING_SERVICE"]["PORT"]
+        config["ROUTING_SERVICE"]["IP_PORT_PAIR"]["IP"],
+        config["ROUTING_SERVICE"]["IP_PORT_PAIR"]["PORT"]
     };
 
     // Initialize server configs
-    server_ip_port_pairs.resize(config["SERVERS"].size());
-    for (size_t i = 0; i < config["SERVERS"].size(); i++) {
-        server_ip_port_pairs[i].resize(config["SERVERS"][i].size());
+    server_ip_port_pairs.resize(config["SERVERS"]["IP_PORT_PAIRS"].size());
+    for (size_t i = 0; i < config["SERVERS"]["IP_PORT_PAIRS"].size(); i++) {
+        server_ip_port_pairs[i].resize(config["SERVERS"]["IP_PORT_PAIRS"][i].size());
         for (size_t j = 0; j < SERVER_NUM_PER_CLUSTER; j++) {
             server_ip_port_pairs[i][j] = {
-                config["SERVERS"][i][j]["IP"],
-                config["SERVERS"][i][j]["PORT"]
+                config["SERVERS"]["IP_PORT_PAIRS"][i][j]["IP"],
+                config["SERVERS"]["IP_PORT_PAIRS"][i][j]["PORT"]
             };
         }
     }
 
-    // Get message timeout
-    message_timeout_ms = config["MESSAGE_TIMEOUT_MS"];
-    
     if (argc > 2) {
         int routing_service_port = std::stoi(argv[1]);
         int server_base_port = std::stoi(argv[2]);
@@ -144,12 +149,12 @@ int main(int argc, char* argv[]) {
             pid_t pid = fork();
             if (pid == 0) {
                 // Child process: create and run server
-                AIOServer server(cluster_id, server_id, routing_service_ip_port_pair, server_ip_port_pairs, message_timeout_ms);
+                AIOServer server(cluster_id, server_id, routing_service_ip_port_pair, server_ip_port_pairs);
                 return 0;
             } else if (pid > 0) {
                 // Parent process: store child pid
                 server_pids.push_back(pid);
-                usleep(100000);
+                usleep(HEAT_BEAT_INTERVAL_MS * 1000);
             } else {
                 std::printf("[Error] Fork failed\n");
                 return 1;
@@ -184,7 +189,7 @@ int main(int argc, char* argv[]) {
                 if (new_pid == 0) {
                     // Child process: create and run server
                     AIOServer server(cluster_id, server_id, routing_service_ip_port_pair, 
-                                    server_ip_port_pairs, message_timeout_ms);
+                                    server_ip_port_pairs);
                     return 0;
                 } else if (new_pid > 0) {
                     // Update the PID in the parent's list

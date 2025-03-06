@@ -6,9 +6,9 @@
 #include <fmt/format.h>
 
 #include "asyncIO.hpp"
-#include "util.hpp"
+#include "utils.hpp"
 
-AsyncIO::AsyncIO(int message_timeout_ms) : message_timeout_ms_(message_timeout_ms) {
+AsyncIO::AsyncIO() {
     // Init
     struct io_uring_params params;
     memset(&params, 0, sizeof(params));

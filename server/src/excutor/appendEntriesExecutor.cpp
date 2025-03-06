@@ -6,7 +6,8 @@
 #include "crossShardRsp.pb.h"
 #include "asyncIO.hpp"
 #include "aIOServer.hpp"
-#include "util.hpp"
+#include "utils.hpp"
+#include "configs.hpp"
 
 
 void AppendEntriesExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const AppendEntriesReq& req) {
@@ -42,6 +43,26 @@ void AppendEntriesExecutor::executeReq(int client_socket, std::shared_ptr<AsyncI
                 // Unmatch or end of log of current server
                 if ((int)raft_state->log_.size() <= log_idx_base + idx || !(entry.term() == raft_state->log_[log_idx_base + idx].term)) {
                     while ((int)raft_state->log_.size() > log_idx_base + idx) {
+                        LogEntry& entry = raft_state->log_.back();
+                        if ((entry.req_fd) != -1) {
+                            if (entry.command.substr(0, 9) == "[PREPARE]") {
+                                // Generate response
+                                WrapperMessage* wrapper_msg = new WrapperMessage;
+                                CrossShardRsp* rsp = wrapper_msg->mutable_crossshardrsp();
+                                rsp->set_result(CrossShardResultType::NO);
+                                rsp->set_id(entry.id);
+                                std::printf("[%d:%d][DETAIL] CrossShardRsp: result=%d, id=%d\n", raft_state->cluster_id_, raft_state->server_id_, rsp->result(), rsp->id());
+                                aio->add_write_request_msg(entry.req_fd, wrapper_msg, AIOMessageType::NO_RESPONSE);
+                            } else {
+                                // Generate response
+                                WrapperMessage* wrapper_msg = new WrapperMessage;
+                                IntraShardRsp* rsp = wrapper_msg->mutable_intrashardrsp();
+                                rsp->set_result(IntraShardResultType::FAIL);
+                                rsp->set_id(entry.id);
+                                std::printf("[%d:%d][DETAIL] IntraShardRsp: result=%d, id=%d\n", raft_state->cluster_id_, raft_state->server_id_, rsp->result(), rsp->id());
+                                aio->add_write_request_msg(entry.req_fd, wrapper_msg, AIOMessageType::NO_RESPONSE);
+                            }
+                        }
                         raft_state->log_.pop_back();
                     }
                     break;

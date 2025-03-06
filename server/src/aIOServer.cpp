@@ -9,7 +9,8 @@
 #include <algorithm>
 
 #include "aIOServer.hpp"
-#include "util.hpp"
+#include "utils.hpp"
+#include "configs.hpp"
 #include "executor/printBalanceExecutor.hpp"
 #include "executor/printDatastoreExecutor.hpp"
 #include "executor/requestVoteExecutor.hpp"
@@ -20,13 +21,13 @@
 
 AIOServer::AIOServer(int cluster_id, int server_id,
     const std::pair<std::string, int>& routing_service_ip_port_pair,
-    const std::vector<std::vector<std::pair<std::string, int>>>& server_ip_port_pairs,
-    int message_timeout_ms) : cluster_id_(cluster_id), server_id_(server_id),
+    const std::vector<std::vector<std::pair<std::string, int>>>& server_ip_port_pairs
+    ) : cluster_id_(cluster_id), server_id_(server_id),
         routing_service_ip_port_pair_(routing_service_ip_port_pair),
         server_ip_port_pairs_(server_ip_port_pairs),
         pretend_fail_(false), keep_running_(true),
         raft_state_(std::make_shared<RaftState>(cluster_id, server_id)),
-        aio_(std::make_shared<AsyncIO>(message_timeout_ms)) {
+        aio_(std::make_shared<AsyncIO>()) {
     // Init
     std::printf("[%d:%d][INIT] Init async I/O server.\n", cluster_id, server_id);
     load_data_shard(raft_state_);
@@ -90,7 +91,7 @@ void AIOServer::broadcast_heart_beat() {
         req->set_prevlogindex(raft_state_->prevlogindex(idx)); // Get -1 for first term
         req->set_prevlogterm(raft_state_->prevlogterm(idx)); // Get -1 for first term
         // Put log in [matched_log_size_,log.size()) into heart beat message
-        for (int log_idx = raft_state_->matched_log_size_[idx]; log_idx < std::min((int)raft_state_->log_.size(), raft_state_->matched_log_size_[idx] + MAX_ENTRY_SIZE); log_idx++) {
+        for (int log_idx = raft_state_->matched_log_size_[idx]; log_idx < std::min((int)raft_state_->log_.size(), raft_state_->matched_log_size_[idx] + MAX_APPEND_ENTRY_SIZE); log_idx++) {
             Entry* entry = req->add_entries();
             entry->set_term(raft_state_->log_[log_idx].term);
             entry->set_index(raft_state_->log_[log_idx].index);

@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 #include "nlohmann/json.hpp"
-#include "util.hpp"
+#include "utils.hpp"
 
 void fatal_error(const std::string& str) {
     perror(("[ERROR] " + str).c_str());

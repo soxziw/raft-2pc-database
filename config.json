@@ -1,53 +1,64 @@
 {
-    "ROUTING_SERVICE":
-    {
-        "IP": "127.0.0.1",
-        "PORT": 8000
+  "CLIENTS": {
+    "SOCKET_CONNECT_TIMEOUT_S": 5,
+    "MESSAGE_ROUND_TRIP_TIMEOUT_S": 15
+  },
+  "ROUTING_SERVICE": {
+    "IP_PORT_PAIR": {
+      "IP": "127.0.0.1",
+      "PORT": 8000
     },
-    "SERVERS":
-    [
-        [
-            {
-                "IP": "127.0.0.1", 
-                "PORT": 5001
-            },
-            {
-                "IP": "127.0.0.1",
-                "PORT": 5002
-            },
-            {
-                "IP": "127.0.0.1",
-                "PORT": 5003
-            }
-        ],
-        [
-            {
-                "IP": "127.0.0.1",
-                "PORT": 5004
-            },
-            {
-                "IP": "127.0.0.1",
-                "PORT": 5005
-            },
-            {
-                "IP": "127.0.0.1",
-                "PORT": 5006
-            }
-        ],
-        [
-            {
-                "IP": "127.0.0.1",
-                "PORT": 5007
-            },
-            {
-                "IP": "127.0.0.1",
-                "PORT": 5008
-            },
-            {
-                "IP": "127.0.0.1",
-                "PORT": 5009
-            }
-        ]
+    "MESSAGE_ROUND_TRIP_TIMEOUT_S": 10
+  },
+  "SERVERS": {
+    "IP_PORT_PAIRS": [
+      [
+        {
+          "IP": "127.0.0.1", 
+          "PORT": 5001
+        },
+        {
+          "IP": "127.0.0.1",
+          "PORT": 5002
+        },
+        {
+          "IP": "127.0.0.1",
+          "PORT": 5003
+        }
+      ],
+      [
+        {
+          "IP": "127.0.0.1",
+          "PORT": 5004
+        },
+        {
+          "IP": "127.0.0.1",
+          "PORT": 5005
+        },
+        {
+          "IP": "127.0.0.1",
+          "PORT": 5006
+        }
+      ],
+      [
+        {
+          "IP": "127.0.0.1",
+          "PORT": 5007
+        },
+        {
+          "IP": "127.0.0.1",
+          "PORT": 5008
+        },
+        {
+          "IP": "127.0.0.1",
+          "PORT": 5009
+        }
+      ]
     ],
-    "MESSAGE_TIMEOUT_MS": 500
+    "HEAT_BEAT_INTERVAL_MS": 100,
+    "TERM_TIMEOUT_MS": 200,
+    "MAX_APPEND_ENTRY_SIZE": 20,
+    "IS_DUMP_DATA": false,
+    "DUMP_DATA_INTERVAL_S": 5
+  }
 }

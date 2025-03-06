@@ -44,10 +44,8 @@ class AsyncIO {
 public:
     /**
      * AsyncIO - Initialization.
-     *
-     * @param message_timeout_ms timeout of read and write
      */
-    AsyncIO(int message_timeout_ms = 30);
+    AsyncIO();
 
     /**
      * set_nonblocking - Set socket fd as non-blocking.
@@ -117,5 +115,4 @@ public:
     void add_file_write_request(int fd, const std::string& content);
 
     struct io_uring ring_; // io_uring object
-    int message_timeout_ms_; // timeout for reading and writing
 };

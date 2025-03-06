@@ -2,9 +2,7 @@
 
 #include "executor/crossShardExecutor.hpp"
 #include "asyncIO.hpp"
-#include "util.hpp"
-#include "crossShardReq.pb.h"
-#include "crossShardRsp.pb.h"
+#include "utils.hpp"
 
 
 void CrossShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> aio, std::shared_ptr<RaftState> raft_state, const CrossShardReq& req) {

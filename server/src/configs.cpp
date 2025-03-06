@@ -1,0 +1,8 @@
+#include "configs.hpp"
+
+bool IS_DUMP_DATA = true;
+int SERVER_NUM_PER_CLUSTER = 3;
+int HEAT_BEAT_INTERVAL_MS = 100;
+int TERM_TIMEOUT_MS = 200;
+int MAX_APPEND_ENTRY_SIZE = 20;
+int DUMP_DATA_INTERVAL_S = 5;

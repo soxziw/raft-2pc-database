@@ -33,7 +33,7 @@ def send_message(hostname: str, port: int, message: bytes, with_response=True, r
             s.setblocking(False)
 
             # Wait for the socket to be writable
-            _, writable, _ = select.select([], [s], [], 1)  # 5s timeout
+            _, writable, _ = select.select([], [s], [], LocalConfig.clients_socket_connect_timeout_s)  # 5s timeout
             if not writable:
                 # if return_timeout:
                 #     return "TIMEOUT"
@@ -43,7 +43,7 @@ def send_message(hostname: str, port: int, message: bytes, with_response=True, r
 
             if with_response:
                 # Wait for the socket to be readable
-                readable, _, _ = select.select([s], [], [], 5)
+                readable, _, _ = select.select([s], [], [], LocalConfig.clients_message_round_trip_timeout_s)
                 if not readable:
                     # if return_timeout:
                     #     return "TIMEOUT"
@@ -75,7 +75,7 @@ async def send_message_async(hostname: str, port: int, message: bytes, with_resp
         await writer.drain()  # Ensure the message is sent before proceeding
 
         if with_response:
-            response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=15)
+            response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=LocalConfig.clients_message_round_trip_timeout_s)
 
     except asyncio.exceptions.TimeoutError:
         raise TimeoutError("Timeout transaction")
@@ -100,7 +100,7 @@ async def send_message_to_raft_async(hostname: str, port: int, message: bytes, w
 
         if with_response:
             try:
-                response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=10)
+                response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=LocalConfig.routing_service_message_round_trip_timeout_s)
             except asyncio.exceptions.TimeoutError:
                 raise TimeoutError("Socket timeout while receiving response")
     except asyncio.exceptions.TimeoutError:
