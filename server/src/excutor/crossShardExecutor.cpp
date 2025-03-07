@@ -105,11 +105,15 @@ void CrossShardExecutor::executeReq(int client_socket, std::shared_ptr<AsyncIO> 
         // Commit transaction
         if (req.senderclusterid() == raft_state->cluster_id_) {
             raft_state->local_balance_tb_[req.senderid()] -= req.amount();
-            raft_state->modify_items_.insert(req.senderid());
+            if (raft_state->role_ == Role::LEADER) {
+                raft_state->modify_items_.insert(req.senderid());
+            }
         }
         if (req.receiverclusterid() == raft_state->cluster_id_) {
             raft_state->local_balance_tb_[req.receiverid()] += req.amount();
-            raft_state->modify_items_.insert(req.receiverid());
+            if (raft_state->role_ == Role::LEADER) {
+                raft_state->modify_items_.insert(req.receiverid());
+            }
         }
         
         // Generate response 

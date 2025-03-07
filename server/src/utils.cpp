@@ -78,10 +78,10 @@ void update_data_shard(std::shared_ptr<RaftState> raft_state, std::shared_ptr<As
     // Update balance of each data items
     for (const auto& item_id : raft_state->modify_items_) {
         try {
-            nlohmann::json j = nlohmann::json::parse(raft_state->balance_jsonl_[item_id - 1]);
+            nlohmann::json j = nlohmann::json::parse(raft_state->balance_jsonl_[item_id % 1000 - 1]);
             j["units"] = raft_state->local_balance_tb_[item_id];
             // Convert the updated JSON back to string and replace the line
-            raft_state->balance_jsonl_[item_id - 1] = j.dump();
+            raft_state->balance_jsonl_[item_id % 1000 - 1] = j.dump();
         } catch (const nlohmann::json::exception& e) {
             std::printf("%s", fmt::format("nlohmann::json parsing error: {}\n", e.what()).c_str());
             continue;
